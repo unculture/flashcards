@@ -23,7 +23,6 @@ cpal = "0.16"
 ureq = "3"
 bzip2 = "0.6"
 tar = "0.4"
-keyring = { version = "3", features = ["windows-native", "apple-native"] }
 
 [profile.release]
 codegen-units = 1
