@@ -1,0 +1,33 @@
+[package]
+name = "flashcards"
+version = "0.1.0"
+description = "Voice-first flashcards"
+authors = ["James Browne"]
+edition = "2024"
+
+[lib]
+# The `_lib` suffix keeps the lib name distinct from the bin name, which matters on Windows.
+name = "flashcards_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Links the prebuilt sherpa-onnx static libraries, downloaded at build time.
+sherpa-onnx = { version = "1.13.8", default-features = false }
+cpal = "0.16"
+ureq = "3"
+bzip2 = "0.6"
+tar = "0.4"
+keyring = { version = "3", features = ["windows-native", "apple-native"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
