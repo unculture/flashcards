@@ -55,6 +55,14 @@ npm install
 npm run tauri dev
 ```
 
+To build the Mac app and install it in `~/Applications` (it replaces an older copy, then opens the app):
+
+```sh
+npm run install:mac
+```
+
+The app has an ad-hoc signature, so it runs on the Mac that built it. After each rebuild, macOS may ask again for the microphone and for keychain access.
+
 The first build downloads the prebuilt sherpa-onnx libraries. Pushes to `main` build the Windows installer with GitHub Actions.
 
 To measure transcription speed with a model folder and a 16 kHz WAV file:
