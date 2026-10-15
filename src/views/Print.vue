@@ -8,10 +8,14 @@ import type { Card } from "../types";
 // Two A4 layouts:
 // - "fold": one side of the paper. Each strip has the question on the left
 //   and the answer on the right. Cut along the dashed lines, then fold along
-//   the dotted middle line. 5 cards per sheet, each 105 × 59.4 mm.
-// - "duplex": both sides of the paper. 8 cards per sheet, each A7
-//   (105 × 74.25 mm). The answer pages swap the columns, so each answer
-//   prints behind its question when the printer flips on the long edge.
+//   the dotted middle line. 5 cards per sheet, each 99 × 56.8 mm.
+// - "duplex": both sides of the paper. 8 cards per sheet, each 99 × 71 mm.
+//   The answer pages swap the columns, so each answer prints behind its
+//   question when the printer flips on the long edge.
+//
+// Each sheet is smaller than A4 and centred, because printers cannot print
+// the outer 4 or 5 mm of the paper. A sheet of exactly 297 mm spills onto a
+// second, blank page. Centring keeps the two sides of a duplex sheet lined up.
 
 type Layout = "fold" | "duplex";
 
@@ -164,22 +168,27 @@ const sheetCount = computed(() => sheets.value.length * (layout.value === "duple
   zoom: 0.5;
 }
 .sheet {
-  width: 210mm;
-  height: 297mm;
+  width: 198mm;
+  height: 284mm;
   background: white;
   color: black;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
   font-family: "Lexend Variable", sans-serif;
   overflow: hidden;
-  break-after: page;
+}
+.sheet + .sheet {
+  break-before: page;
+  page-break-before: always;
 }
 .fold {
   display: grid;
-  grid-template-rows: repeat(5, 59.4mm);
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  border: 0.3mm dashed #999;
+  border-bottom: none;
 }
 .strip {
   display: grid;
-  grid-template-columns: 105mm 105mm;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   border-bottom: 0.3mm dashed #999;
 }
 .strip .cell:first-child {
@@ -187,8 +196,10 @@ const sheetCount = computed(() => sheets.value.length * (layout.value === "duple
 }
 .duplex {
   display: grid;
-  grid-template-columns: 105mm 105mm;
-  grid-template-rows: repeat(4, 74.25mm);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  border-top: 0.3mm dashed #999;
+  border-left: 0.3mm dashed #999;
 }
 .duplex .cell {
   border-right: 0.3mm dashed #999;
@@ -211,9 +222,8 @@ const sheetCount = computed(() => sheets.value.length * (layout.value === "duple
 }
 .tag {
   position: absolute;
-  /* Most printers cannot print the outer 4 or 5 mm of the paper. */
-  top: 6mm;
-  left: 8mm;
+  top: 3mm;
+  left: 4mm;
   font-size: 7pt;
   color: #888;
 }
@@ -232,6 +242,7 @@ const sheetCount = computed(() => sheets.value.length * (layout.value === "duple
   }
   .sheet {
     box-shadow: none;
+    margin: 0 auto;
   }
 }
 </style>

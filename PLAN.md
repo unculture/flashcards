@@ -143,7 +143,7 @@ Cost: probably a fraction of a cent for each answer. Set a spend limit on the Op
 Two A4 layouts, printed through the web view's print function with CSS that sets the A4 page size:
 
 - Fold cards (most reliable): one side of the paper. The question and the answer are next to each other, with a dashed fold line and dashed cut lines. The front and back do not need to line up.
-- Double-sided: 8 cards on each sheet, each A7 (74 × 105 mm). Page 1 has the questions, and page 2 has the answers in mirrored positions, so that each answer prints behind its question with a long-edge flip. Duplex printers often move the back by 1 to 3 mm, so keep the text well inside the cut lines. Include a one-time alignment test page for the printer.
+- Double-sided: 8 cards on each sheet, each 99 × 71 mm. The sheet is a little smaller than A4 and centred, because printers cannot print the outer 4 to 5 mm. A full 297 mm sheet spilled onto a blank extra page in the macOS print preview. Page 1 has the questions, and page 2 has the answers in mirrored positions, so that each answer prints behind its question with a long-edge flip. Duplex printers often move the back by 1 to 3 mm, so keep the text well inside the cut lines. Include a one-time alignment test page for the printer.
 
 The text shrinks to fit each card and uses the same readable font as the app.
 
