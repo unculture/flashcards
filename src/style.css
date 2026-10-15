@@ -161,3 +161,21 @@ button:focus-visible {
   outline: 3px solid var(--accent-soft);
   outline-offset: 2px;
 }
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  body,
+  :root {
+    background: white;
+  }
+  .app {
+    padding: 0;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

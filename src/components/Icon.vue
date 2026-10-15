@@ -17,6 +17,7 @@ const PATHS = {
   arrowRight: "M5 12h14 M13 6l6 6-6 6",
   eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
   skip: "M5 5l8 7-8 7z M17 5v14",
+  printer: "M7 9V3h10v6 M7 17H4v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6h-3 M7 14h10v7H7z",
 } as const;
 
 export type IconName = keyof typeof PATHS;

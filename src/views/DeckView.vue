@@ -40,6 +40,14 @@ function removeDeck() {
         <Icon name="cards" /> Practise
         <span v-if="deck.cards.length" class="due">{{ dueCount }} ready</span>
       </button>
+      <button
+        type="button"
+        class="button big print"
+        :disabled="deck.cards.length === 0"
+        @click="go({ name: 'print', deckId: deck.id })"
+      >
+        <Icon name="printer" /> Print
+      </button>
     </div>
 
     <div v-if="deck.cards.length" class="progress">
@@ -110,6 +118,10 @@ function removeDeck() {
 .actions .button {
   flex: 1;
   min-width: 220px;
+}
+.actions .button.print {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 .due {
   font-size: 0.95rem;

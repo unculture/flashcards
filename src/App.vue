@@ -8,6 +8,7 @@ import DeckView from "./views/DeckView.vue";
 import Home from "./views/Home.vue";
 import NewDeck from "./views/NewDeck.vue";
 import Practice from "./views/Practice.vue";
+import Print from "./views/Print.vue";
 import Settings from "./views/Settings.vue";
 
 const startError = ref<string | null>(null);
@@ -28,8 +29,8 @@ onMounted(async () => {
 
 <template>
   <main class="app">
-    <p v-if="startError" class="error">Something went wrong while starting: {{ startError }}</p>
-    <p v-if="saveError" class="error">Your cards could not be saved: {{ saveError }}</p>
+    <p v-if="startError" class="error no-print">Something went wrong while starting: {{ startError }}</p>
+    <p v-if="saveError" class="error no-print">Your cards could not be saved: {{ saveError }}</p>
     <template v-if="loaded">
       <Home v-if="route.name === 'home'" />
       <NewDeck v-else-if="route.name === 'newDeck'" />
@@ -42,6 +43,7 @@ onMounted(async () => {
         :card-id="route.cardId"
       />
       <Practice v-else-if="route.name === 'practice'" :deck-id="route.deckId" />
+      <Print v-else-if="route.name === 'print'" :deck-id="route.deckId" />
     </template>
   </main>
 </template>
