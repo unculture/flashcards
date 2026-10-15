@@ -5,6 +5,7 @@ import Icon from "../components/Icon.vue";
 import LiveText from "../components/LiveText.vue";
 import MicButton from "../components/MicButton.vue";
 import ModelBanner from "../components/ModelBanner.vue";
+import { type Mark, markAnswer, sameAnswer } from "../ai";
 import { findDeck, markCard, modelFor, pickSession } from "../library";
 import { go, useSpaceToTalk } from "../router";
 import {
@@ -30,6 +31,13 @@ const index = ref(0);
 const revealed = ref(false);
 const spoken = ref("");
 const recording = ref(false);
+/** The mark for her spoken answer, from the quick check or the AI. */
+const aiMark = ref<Mark | null>(null);
+const checking = ref(false);
+/** The button that the mark suggests. She can always press the other one. */
+const suggested = computed(() =>
+  aiMark.value ? (aiMark.value.verdict === "right" ? "gotit" : "notyet") : null,
+);
 const movedUp = ref(0);
 const practised = ref(0);
 /** True when no cards were due, before she chooses to practise anyway. */
@@ -51,6 +59,8 @@ function startSession(everything: boolean) {
 function showCard() {
   revealed.value = false;
   spoken.value = "";
+  aiMark.value = null;
+  checking.value = false;
 }
 
 onMounted(() => {
@@ -65,6 +75,7 @@ async function pressMic() {
     spoken.value = await stopDictation();
     recording.value = false;
     reveal();
+    if (spoken.value) check(card.value, spoken.value);
   } else if (dictation.state === "idle") {
     recording.value = await startDictation(answerModel.value);
   }
@@ -76,6 +87,26 @@ function reveal() {
     recording.value = false;
   }
   revealed.value = true;
+}
+
+/** Marks her spoken answer: a quick local match first, then the AI. */
+async function check(target: Card, said: string) {
+  if (sameAnswer(target.back.text, said)) {
+    aiMark.value = { verdict: "right", feedback: "Yes, that's it!" };
+    return;
+  }
+  checking.value = true;
+  const result = await markAnswer({
+    question: target.front.text,
+    answer: target.back.text,
+    spoken: said,
+    lang: deck.value!.backLang,
+    deckName: deck.value!.name,
+  });
+  // She may have moved on while the AI was thinking.
+  if (card.value !== target) return;
+  checking.value = false;
+  aiMark.value = result;
 }
 
 function mark(gotIt: boolean) {
@@ -158,6 +189,8 @@ useSpaceToTalk(pressMic);
         <div v-if="spoken" class="face mine">
           <span class="side-label">You said</span>
           <p class="face-text">{{ spoken }}</p>
+          <p v-if="checking" class="feedback checking">Checking…</p>
+          <p v-else-if="aiMark" class="feedback" :class="aiMark.verdict">{{ aiMark.feedback }}</p>
         </div>
         <div class="face answer">
           <div class="face-head">
@@ -166,8 +199,22 @@ useSpaceToTalk(pressMic);
           <p class="face-text">{{ card.back.text }}</p>
         </div>
         <div class="row center marks">
-          <button type="button" class="button big notyet" @click="mark(false)">Not yet</button>
-          <button type="button" class="button big gotit" @click="mark(true)"><Icon name="check" /> Got it</button>
+          <button
+            type="button"
+            class="button big notyet"
+            :class="{ faded: suggested === 'gotit' }"
+            @click="mark(false)"
+          >
+            Not yet
+          </button>
+          <button
+            type="button"
+            class="button big gotit"
+            :class="{ faded: suggested === 'notyet' }"
+            @click="mark(true)"
+          >
+            <Icon name="check" /> {{ suggested === "notyet" ? "I was right" : "Got it" }}
+          </button>
         </div>
       </template>
     </template>
@@ -245,6 +292,27 @@ useSpaceToTalk(pressMic);
 .notyet {
   background: var(--soft-amber);
   border-color: var(--soft-amber);
+}
+/* The button that the mark does not suggest: still easy to press. */
+.marks .faded {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--line);
+}
+.feedback {
+  font-size: 1.3rem;
+  margin: 12px 0 0;
+  font-weight: 500;
+}
+.feedback.right {
+  color: var(--good);
+}
+.feedback.nearly {
+  color: var(--warn);
+}
+.feedback.not_yet,
+.feedback.checking {
+  color: var(--muted);
 }
 .end {
   text-align: center;

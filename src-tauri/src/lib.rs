@@ -1,3 +1,4 @@
+mod ai;
 mod audio;
 mod library;
 mod speech;
@@ -171,6 +172,37 @@ fn cancel_session(state: &AppState) {
 }
 
 #[tauri::command]
+fn ai_key_status() -> ai::KeyStatus {
+    ai::key_status()
+}
+
+#[tauri::command]
+async fn ai_set_key(key: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || ai::set_key(&key))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn ai_clear_key() -> Result<(), String> {
+    ai::clear_key()
+}
+
+#[tauri::command]
+async fn ai_cleanup(request: ai::CleanupRequest) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || ai::cleanup(&request))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn ai_mark(request: ai::MarkRequest) -> Result<ai::Mark, String> {
+    tauri::async_runtime::spawn_blocking(move || ai::mark(&request))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 fn load_library(state: State<AppState>) -> Result<Option<Value>, String> {
     state.library.load()
 }
@@ -226,6 +258,11 @@ pub fn run() {
             cancel_dictation,
             load_library,
             save_library,
+            ai_key_status,
+            ai_set_key,
+            ai_clear_key,
+            ai_cleanup,
+            ai_mark,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

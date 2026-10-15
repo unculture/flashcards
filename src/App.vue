@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue";
 import { library, loadLibrary, loaded, saveError } from "./library";
 import { route } from "./router";
+import { refreshKey } from "./ai";
 import { ensureModel, initSpeech } from "./speech";
 import CardMaker from "./views/CardMaker.vue";
 import DeckView from "./views/DeckView.vue";
@@ -17,6 +18,7 @@ onMounted(async () => {
   try {
     await initSpeech();
     await loadLibrary();
+    await refreshKey();
     // Start the English voice download on the first launch, so it is ready
     // by the time she has named her first deck.
     ensureModel("english");

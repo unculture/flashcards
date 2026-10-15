@@ -199,12 +199,19 @@ Not tested yet:
 - speed on her i5
 - the multilingual model with French
 
+AI help, added later the same evening:
+
+- The OpenRouter key is entered in Settings, checked against `/key`, and stored with the `keyring` crate (Windows Credential Manager or the macOS keychain). `OPENROUTER_API_KEY` is a fallback for development.
+- Cleanup: Patter's prompt and its output checks, adapted for cards. It keeps facts and the language, and the answer cleanup gets the question as context. The raw transcript stays in `Side.heard`, and "Use what I said" restores it.
+- Marking: an exact match is checked on the computer first. Otherwise the model returns `right`, `nearly`, or `not_yet` and one kind sentence. The suggested button is highlighted, and the other one stays easy to press ("I was right").
+- The model is a setting, with Patter's three presets. The default is GPT-5.6 Luna.
+- Tested only against a local mock server (`cargo test`), not yet against OpenRouter itself.
+
 ### Next steps
 
-1. Test on her laptop, and fix what the test shows.
+1. Test on her laptop, and fix what the test shows. Test the AI help with a real key.
 2. Export and import of a deck as a file (the exchange format is the `Library` type in `src/types.ts`).
-3. AI cleanup through OpenRouter, with the key in Windows Credential Manager.
-4. AI marking of spoken answers.
+3. A printer alignment test page, an app icon, and installers as GitHub releases.
 
 ## Later
 

@@ -5,6 +5,7 @@ import LiveText from "../components/LiveText.vue";
 import MicButton from "../components/MicButton.vue";
 import ModelBanner from "../components/ModelBanner.vue";
 import TypeDialog from "../components/TypeDialog.vue";
+import { cleanupText } from "../ai";
 import { addCard, findDeck, modelFor } from "../library";
 import { go, useSpaceToTalk } from "../router";
 import {
@@ -41,6 +42,13 @@ const recordingSide = ref<SideName | null>(null);
 const typing = ref<SideName | null>(null);
 const notice = ref<string | null>(null);
 const madeCount = ref(0);
+/** Identifies the card being made, so a late cleanup finds the right card. */
+const draftId = ref(crypto.randomUUID());
+/** The saved card for each draft. */
+const cardForDraft = new Map<string, string>();
+/** Sides waiting for the AI cleanup, as "draftId:side". */
+const tidying = reactive(new Set<string>());
+const isTidying = (side: SideName) => tidying.has(`${draftId.value}:${side}`);
 
 if (props.cardId && deck.value) {
   const card = deck.value.cards.find((c) => c.id === props.cardId);
@@ -103,6 +111,47 @@ async function finishRecording() {
     return;
   }
   setSide(side, { text, heard: text });
+  tidyUp(side, text);
+}
+
+/**
+ * Sends a side to the AI cleanup. The card is already saved with the raw
+ * text, so she can carry on. The cleaned text replaces it when it arrives,
+ * unless the side changed in the meantime.
+ */
+async function tidyUp(side: SideName, raw: string) {
+  const token = draftId.value;
+  const key = `${token}:${side}`;
+  tidying.add(key);
+  const cleaned = await cleanupText({
+    text: raw,
+    side: side === "front" ? "question" : "answer",
+    lang: langOf(side),
+    deckName: deck.value!.name,
+    question: side === "back" ? draft.front.text : undefined,
+  });
+  tidying.delete(key);
+  if (!cleaned || cleaned === raw) return;
+
+  if (draftId.value === token) {
+    if (draft[side].text !== raw) return;
+    draft[side] = { text: cleaned, heard: raw };
+    if (savedId.value) updateSaved();
+    return;
+  }
+  const card = deck.value?.cards.find((c) => c.id === cardForDraft.get(token));
+  if (card && card[side].text === raw) {
+    card[side] = { text: cleaned, heard: raw };
+    card.updatedAt = new Date().toISOString();
+  }
+}
+
+/** Puts back exactly what the speech model heard, before the cleanup. */
+function useWhatIHeard(side: SideName) {
+  const heard = draft[side].heard;
+  if (!heard) return;
+  draft[side] = { text: heard, heard };
+  if (savedId.value) updateSaved();
 }
 
 /** Puts new text on a side, then moves on: question to answer, answer to save. */
@@ -116,6 +165,7 @@ function setSide(side: SideName, value: Side) {
   } else if (draft.front.text && draft.back.text) {
     const card = addCard(deck.value!, { ...draft.front }, { ...draft.back });
     savedId.value = card.id;
+    cardForDraft.set(draftId.value, card.id);
     madeCount.value++;
     active.value = null;
   } else {
@@ -132,6 +182,7 @@ function updateSaved() {
 }
 
 function startNewCard() {
+  draftId.value = crypto.randomUUID();
   draft.front = { text: "" };
   draft.back = { text: "" };
   savedId.value = null;
@@ -152,7 +203,7 @@ function openTyping() {
 function typed(text: string) {
   const side = typing.value!;
   typing.value = null;
-  if (text) setSide(side, { ...draft[side], text });
+  if (text) setSide(side, { text });
 }
 
 function shownText(side: SideName) {
@@ -184,6 +235,16 @@ useSpaceToTalk(pressMic);
     >
       <div class="side-head">
         <span class="side-label">{{ side === "front" ? "Question" : "Answer" }}</span>
+        <span v-if="isTidying(side)" class="tidying">Tidying up…</span>
+        <button
+          v-else-if="draft[side].heard && draft[side].heard !== draft[side].text && recordingSide !== side"
+          type="button"
+          class="heard"
+          @mousedown.prevent
+          @click.stop="useWhatIHeard(side)"
+        >
+          Use what I said
+        </button>
       </div>
       <LiveText
         :text="shownText(side)"
@@ -249,6 +310,22 @@ useSpaceToTalk(pressMic);
   align-items: center;
   justify-content: space-between;
   margin-bottom: 4px;
+  min-height: 44px;
+}
+.tidying {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.heard {
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 8px 0 8px 12px;
+  min-height: 44px;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 .side-label {
   font-size: 1rem;

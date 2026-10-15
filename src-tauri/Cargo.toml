@@ -20,9 +20,11 @@ serde_json = "1"
 # Links the prebuilt sherpa-onnx static libraries, downloaded at build time.
 sherpa-onnx = { version = "1.13.8", default-features = false }
 cpal = "0.16"
-ureq = "3"
+ureq = { version = "3", features = ["json"] }
 bzip2 = "0.6"
 tar = "0.4"
+# The OpenRouter key goes in Windows Credential Manager or the macOS keychain.
+keyring = { version = "3", features = ["windows-native", "apple-native"] }
 
 [profile.release]
 codegen-units = 1

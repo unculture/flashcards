@@ -31,8 +31,14 @@ export interface Deck {
   cards: Card[];
 }
 
-// Empty for now. Read-aloud was removed until a better voice is available.
-export type Settings = Record<string, never>;
+export interface Settings {
+  /** Tidy up spoken card text with AI. */
+  cleanup: boolean;
+  /** Check spoken answers in practice with AI. */
+  marking: boolean;
+  /** The OpenRouter model for cleanup and marking. */
+  aiModel: string;
+}
 
 /**
  * The whole library. This is also the exchange format for a future iPhone
