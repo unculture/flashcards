@@ -179,34 +179,32 @@ A speaker button on each card side, when she makes cards and when she practises.
 
 ## Progress
 
-As of 15 October 2026 (evening):
+As of 15 October 2026 (evening), version 0.1.0 is built:
 
-- The user chose the Tauri app over a quick web page for tonight.
-- Rust 1.99 is installed with rustup on the Mac, and Node 22 with nvm. The repository has an `.nvmrc` file, so run `nvm use` in the repository folder.
-- The repository holds the Tauri 2, Vue 3, and TypeScript scaffold, renamed to Flashcards. `src/App.vue` is a placeholder.
-- `src-tauri/Cargo.toml` lists the planned dependencies: `sherpa-onnx` 1.13.8, `cpal`, `ureq`, `bzip2`, `tar`, and `keyring`. Nothing has been built yet, not even `cargo check`.
+- Decks: create one by voice or by typing, choose English or French answers, view the decks, delete a deck.
+- Card making: the microphone flow with live text, the correction highlight, automatic read-back, saving without a Save button, redoing a side, and typing a side.
+- Practice: Leitner boxes, sessions of 10, answering by voice or showing the answer, Got it and Not yet, and "All caught up" and "Done for today" screens. No timers.
+- Printing: fold cards (5 on each A4 page) and double-sided cards (8 on each sheet).
+- Settings: the voice downloads and the read-aloud switch.
+- Back end: cpal capture, live transcription that runs again about every 350 ms, a final pass with 0.4 s of padding, the model download (streamed through bzip2 and tar, with progress), and `library.json` with a backup.
+- The Windows installer builds with GitHub Actions. It is about 7 MB, and the build takes about 8 minutes. The sherpa-onnx static libraries link on Windows with no extra flags.
 
-Findings about sherpa-onnx:
+Measured on the M1 MacBook Pro (CPU, 4 threads): the English model loads in 1.2 s, and transcribes 1 s of audio in 0.12 s, 4 s in 0.36 s, and 7.4 s in 0.65 s.
 
-- The official `sherpa-onnx` crate (1.13.8) supports Tauri. With `default-features = false`, it downloads prebuilt static libraries at build time. On Windows these are the `win-x64-static-MT-Release` libraries. The sherpa-onnx project builds its own Tauri demos on Windows with no extra Rust flags. If the Windows link fails with a C runtime mismatch, add `-C target-feature=+crt-static`.
-- Reference example: `tauri-examples/non-streaming-speech-recognition-from-microphone` in https://github.com/k2-fsa/sherpa-onnx. It shows cpal capture and the recognizer setup.
-- Model downloads, from https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models:
-  - English: `sherpa-onnx-nemo-parakeet-unified-en-0.6b-int8-non-streaming.tar.bz2` (501 MB). This is the same model as Patter's English model. Streaming versions of this model also exist (240 ms, 560 ms, 1120 ms chunks), which can be an option for live text.
-  - Multilingual: `sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2` (487 MB).
-  - Configuration for both: `OfflineTransducerModelConfig` with `encoder.int8.onnx`, `decoder.int8.onnx`, and `joiner.int8.onnx`, plus `tokens.txt` and `model_type = "nemo_transducer"`.
+Not tested yet:
+
+- the real microphone on any machine (only WAV files were transcribed)
+- read-aloud voices in WebView2 on Windows
+- the touch keyboard in tablet mode
+- speed on her i5
+- the multilingual model with French
 
 ### Next steps
 
-1. Rust back end:
-   - `cpal` microphone capture on its own thread
-   - resampling to 16 kHz with `sherpa_onnx::LinearResampler`
-   - a live loop that transcribes the audio again while she speaks and sends `dictation-partial` and level events
-   - a final pass on stop
-   - model download and unpacking with progress events
-   - saving the decks to a JSON file in the app data folder
-2. Vue front end: the deck list, the deck view, the quick card screen with a large microphone button, read aloud, and simple practice.
-3. A GitHub Actions workflow on `windows-latest` that builds the NSIS installer.
-4. After that: AI cleanup, AI marking, and printing.
+1. Test on her laptop, and fix what the test shows.
+2. Export and import of a deck as a file (the exchange format is the `Library` type in `src/types.ts`).
+3. AI cleanup through OpenRouter, with the key in Windows Credential Manager.
+4. AI marking of spoken answers.
 
 ## Later
 
