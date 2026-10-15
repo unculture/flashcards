@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref } from "vue";
 import Icon from "../components/Icon.vue";
 import LiveText from "../components/LiveText.vue";
 import MicButton from "../components/MicButton.vue";
+import ModelBanner from "../components/ModelBanner.vue";
 import TypeDialog from "../components/TypeDialog.vue";
 import { createDeck } from "../library";
 import { go, useSpaceToTalk } from "../router";
@@ -54,6 +55,8 @@ useSpaceToTalk(pressMic);
       </button>
       <h1>New deck</h1>
     </header>
+
+    <ModelBanner model="english" />
 
     <div class="panel">
       <span class="label">What is the deck called?</span>

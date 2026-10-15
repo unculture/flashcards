@@ -4,6 +4,7 @@ import BoxBar from "../components/BoxBar.vue";
 import Icon from "../components/Icon.vue";
 import LiveText from "../components/LiveText.vue";
 import MicButton from "../components/MicButton.vue";
+import ModelBanner from "../components/ModelBanner.vue";
 import SpeakButton from "../components/SpeakButton.vue";
 import { findDeck, library, markCard, modelFor, pickSession } from "../library";
 import { go, useSpaceToTalk } from "../router";
@@ -111,6 +112,8 @@ useSpaceToTalk(pressMic);
       <h1>{{ deck.name }}</h1>
       <span v-if="card" class="count">{{ index + 1 }} of {{ cards.length }}</span>
     </header>
+
+    <ModelBanner :model="answerModel" />
 
     <div v-if="nothingDue" class="end">
       <h2>All caught up!</h2>
