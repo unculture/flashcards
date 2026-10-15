@@ -208,6 +208,16 @@ async fn ai_mark(request: ai::MarkRequest) -> Result<ai::Mark, String> {
         .map_err(|e| e.to_string())?
 }
 
+/// Returns a WAV file of the text read aloud, as raw bytes.
+#[tauri::command]
+async fn ai_speak(app: AppHandle, request: ai::SpeakRequest) -> Result<tauri::ipc::Response, String> {
+    let cache = app.path().app_cache_dir().map_err(|e| e.to_string())?.join("speech");
+    let wav = tauri::async_runtime::spawn_blocking(move || ai::speak(&request, &cache))
+        .await
+        .map_err(|e| e.to_string())??;
+    Ok(tauri::ipc::Response::new(wav))
+}
+
 #[tauri::command]
 fn load_library(state: State<AppState>) -> Result<Option<Value>, String> {
     state.library.load()
@@ -304,6 +314,7 @@ pub fn run() {
             ai_clear_key,
             ai_cleanup,
             ai_mark,
+            ai_speak,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

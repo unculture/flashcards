@@ -25,6 +25,7 @@ bzip2 = "0.6"
 tar = "0.4"
 # The OpenRouter key goes in Windows Credential Manager or the macOS keychain.
 keyring = { version = "3", features = ["windows-native", "apple-native"] }
+base64 = "0.22"
 
 [profile.release]
 codegen-units = 1

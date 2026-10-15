@@ -33,7 +33,9 @@ To set it up:
 1. Create a separate key for this app at [openrouter.ai/keys](https://openrouter.ai/keys), with a low monthly spend limit, because the key is stored on her laptop.
 2. In Flashcards, open Settings, paste the key under AI help, and click Save. The app checks the key, then stores it in Windows Credential Manager (on a Mac, in the keychain). The key is not in `library.json`.
 
-The app sends the card text to OpenRouter, never the audio. Without a key or without an internet connection, everything else still works, and she marks her own answers.
+- read cards aloud with an OpenRouter audio model (GPT Audio Mini by default). Speaker buttons show on cards when a key is saved. In Settings, under Read aloud, you can choose the voice, try it, and turn on automatic reading. Each card's audio is fetched once and then kept in the app's cache folder, so reading a card again costs nothing.
+
+The app sends the card text to OpenRouter, never the recorded audio. Without a key or without an internet connection, everything else still works, and she marks her own answers.
 
 For development, the app also reads the key from `OPENROUTER_API_KEY` when no key is stored.
 

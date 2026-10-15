@@ -5,8 +5,10 @@ import Icon from "../components/Icon.vue";
 import LiveText from "../components/LiveText.vue";
 import MicButton from "../components/MicButton.vue";
 import ModelBanner from "../components/ModelBanner.vue";
+import SpeakButton from "../components/SpeakButton.vue";
 import { type Mark, markAnswer, sameAnswer } from "../ai";
-import { findDeck, markCard, modelFor, pickSession } from "../library";
+import { findDeck, library, markCard, modelFor, pickSession } from "../library";
+import { speak, stopSpeaking } from "../voice";
 import { go, useSpaceToTalk } from "../router";
 import {
   cancelDictation,
@@ -61,13 +63,17 @@ function showCard() {
   spoken.value = "";
   aiMark.value = null;
   checking.value = false;
+  if (card.value && library.settings.readBack) speak(card.value.front.text, deck.value!.frontLang);
 }
 
 onMounted(() => {
   preloadModel(answerModel.value);
   startSession(false);
 });
-onBeforeUnmount(cancelDictation);
+onBeforeUnmount(() => {
+  cancelDictation();
+  stopSpeaking();
+});
 
 async function pressMic() {
   if (!card.value || revealed.value) return;
@@ -87,6 +93,7 @@ function reveal() {
     recording.value = false;
   }
   revealed.value = true;
+  if (library.settings.readBack) speak(card.value!.back.text, deck.value!.backLang);
 }
 
 /** Marks her spoken answer: a quick local match first, then the AI. */
@@ -118,6 +125,7 @@ function mark(gotIt: boolean) {
 }
 
 function next() {
+  stopSpeaking();
   index.value++;
   showCard();
 }
@@ -163,6 +171,7 @@ useSpaceToTalk(pressMic);
       <div class="face question">
         <div class="face-head">
           <span class="side-label">Question</span>
+          <SpeakButton :text="card.front.text" :lang="deck.frontLang" />
         </div>
         <p class="face-text">{{ card.front.text }}</p>
       </div>
@@ -195,6 +204,7 @@ useSpaceToTalk(pressMic);
         <div class="face answer">
           <div class="face-head">
             <span class="side-label">Answer</span>
+            <SpeakButton :text="card.back.text" :lang="deck.backLang" />
           </div>
           <p class="face-text">{{ card.back.text }}</p>
         </div>

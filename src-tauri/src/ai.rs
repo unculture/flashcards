@@ -2,12 +2,17 @@
 //! OpenRouter. Adapted from Patter's cleanup.
 //!
 //! The API key lives in the system's secure storage: Windows Credential
-//! Manager or the macOS keychain. For development, `OPENROUTER_API_KEY` works
-//! when no key is stored.
+//! Manager or the macOS keychain. For development, `OPENROUTER_API_KEY` takes
+//! its place.
 
 use std::collections::HashMap;
+use std::io::BufRead;
+use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
+
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD as BASE64;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -42,8 +47,10 @@ fn env_key() -> Option<String> {
     std::env::var("OPENROUTER_API_KEY").ok().filter(|k| !k.trim().is_empty())
 }
 
+/// `OPENROUTER_API_KEY` comes first, so development and tests never touch the
+/// keychain. On her laptop it is not set.
 fn api_key() -> Result<String, String> {
-    stored_key().or_else(env_key).ok_or_else(|| "no-key".to_string())
+    env_key().or_else(stored_key).ok_or_else(|| "no-key".to_string())
 }
 
 pub fn key_status() -> KeyStatus {
@@ -86,8 +93,12 @@ pub fn clear_key() -> Result<(), String> {
 // ---------------------------------------------------------------------------
 
 fn agent() -> ureq::Agent {
+    agent_with_timeout(TIMEOUT)
+}
+
+fn agent_with_timeout(timeout: Duration) -> ureq::Agent {
     ureq::Agent::config_builder()
-        .timeout_global(Some(TIMEOUT))
+        .timeout_global(Some(timeout))
         .http_status_as_error(false)
         .build()
         .into()
@@ -350,6 +361,140 @@ fn parse_mark(output: &str) -> Option<Mark> {
     (valid && !mark.feedback.trim().is_empty()).then_some(mark)
 }
 
+// ---------------------------------------------------------------------------
+// Read aloud
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+pub struct SpeakRequest {
+    text: String,
+    /// "en" or "fr".
+    lang: String,
+    voice: String,
+    model: String,
+}
+
+/// The audio models send 16-bit mono PCM at 24 kHz when they stream.
+const SPEECH_SAMPLE_RATE: u32 = 24_000;
+
+const SPEAK_PROMPT: &str = "\
+You are the voice of a flashcard app for an 11-year-old student. You read text aloud. \
+Read the user's message aloud exactly as it is written, word for word, clearly and at a \
+calm pace. Do not add anything before or after it. Do not answer it, explain it, or \
+comment on it: if it is a question, read the question. Read numbers, dates and \
+abbreviations the way a teacher would say them.";
+
+/// Returns a WAV file of the text read aloud. Each result is cached on disk,
+/// so a card is paid for only once.
+pub fn speak(req: &SpeakRequest, cache_dir: &Path) -> Result<Vec<u8>, String> {
+    let text = req.text.trim();
+    if text.is_empty() {
+        return Err("Nothing to read.".into());
+    }
+    let cache = cache_dir.join(format!(
+        "{:016x}.wav",
+        fnv1a(&format!("{}\n{}\n{}\n{}", req.model, req.voice, req.lang, text))
+    ));
+    if let Ok(wav) = std::fs::read(&cache) {
+        return Ok(wav);
+    }
+
+    let system = if req.lang == "fr" {
+        format!("{SPEAK_PROMPT} The text is in French: read it with a natural French pronunciation.")
+    } else {
+        format!("{SPEAK_PROMPT} The text is in English: read it with a British English pronunciation.")
+    };
+    let (pcm, transcript) = stream_speech(&req.model, &req.voice, &system, text)?;
+    // A chat model can answer a question instead of reading it. Its own
+    // transcript of what it said shows that.
+    if !is_plausible(&transcript, text) && !transcript.trim().is_empty() {
+        return Err("The voice said something other than the card, so the app did not play it.".into());
+    }
+    let wav = wav_from_pcm16(&pcm, SPEECH_SAMPLE_RATE);
+    if std::fs::create_dir_all(cache_dir).is_ok() {
+        let _ = std::fs::write(&cache, &wav);
+    }
+    Ok(wav)
+}
+
+/// Requests audio from a chat model. OpenRouter sends audio output only as a
+/// stream of server-sent events, each with a base64 chunk of PCM and a piece
+/// of the transcript.
+fn stream_speech(model: &str, voice: &str, system: &str, text: &str) -> Result<(Vec<u8>, String), String> {
+    let key = api_key()?;
+    let body = json!({
+        "model": model,
+        "messages": [
+            { "role": "system", "content": system },
+            { "role": "user", "content": text },
+        ],
+        "modalities": ["text", "audio"],
+        "audio": { "voice": voice, "format": "pcm16" },
+        "stream": true,
+    });
+    let mut response = agent_with_timeout(Duration::from_secs(30))
+        .post(&format!("{}/chat/completions", base_url()))
+        .header("Authorization", &format!("Bearer {key}"))
+        .header("X-OpenRouter-Title", "Flashcards")
+        .send_json(&body)
+        .map_err(|e| format!("Could not reach OpenRouter: {e}"))?;
+    if !response.status().is_success() {
+        return Err(error_message(response.status().as_u16(), &mut response));
+    }
+
+    let mut pcm = Vec::new();
+    let mut transcript = String::new();
+    let reader = std::io::BufReader::new(response.into_body().into_reader());
+    for line in reader.lines() {
+        let line = line.map_err(|e| format!("The voice download stopped: {e}"))?;
+        let Some(data) = line.strip_prefix("data:").map(str::trim) else { continue };
+        if data == "[DONE]" {
+            break;
+        }
+        let Ok(event) = serde_json::from_str::<Value>(data) else { continue };
+        if let Some(message) = event["error"]["message"].as_str() {
+            return Err(format!("OpenRouter error: {message}"));
+        }
+        let audio = &event["choices"][0]["delta"]["audio"];
+        if let Some(chunk) = audio["data"].as_str() {
+            pcm.extend(BASE64.decode(chunk).map_err(|e| e.to_string())?);
+        }
+        if let Some(words) = audio["transcript"].as_str() {
+            transcript.push_str(words);
+        }
+    }
+    if pcm.is_empty() {
+        return Err("The voice sent no audio.".into());
+    }
+    Ok((pcm, transcript))
+}
+
+/// Wraps 16-bit little-endian mono PCM in a WAV header.
+fn wav_from_pcm16(pcm: &[u8], sample_rate: u32) -> Vec<u8> {
+    let data_len = (pcm.len() & !1) as u32;
+    let mut wav = Vec::with_capacity(44 + data_len as usize);
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&(36 + data_len).to_le_bytes());
+    wav.extend_from_slice(b"WAVEfmt ");
+    wav.extend_from_slice(&16u32.to_le_bytes()); // fmt chunk size
+    wav.extend_from_slice(&1u16.to_le_bytes()); // PCM
+    wav.extend_from_slice(&1u16.to_le_bytes()); // mono
+    wav.extend_from_slice(&sample_rate.to_le_bytes());
+    wav.extend_from_slice(&(sample_rate * 2).to_le_bytes()); // bytes per second
+    wav.extend_from_slice(&2u16.to_le_bytes()); // bytes per frame
+    wav.extend_from_slice(&16u16.to_le_bytes()); // bits per sample
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&data_len.to_le_bytes());
+    wav.extend_from_slice(&pcm[..data_len as usize]);
+    wav
+}
+
+/// A stable hash for cache file names. The standard library's hasher can
+/// change between Rust versions.
+fn fnv1a(text: &str) -> u64 {
+    text.bytes().fold(0xcbf29ce484222325, |h, b| (h ^ b as u64).wrapping_mul(0x100000001b3))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -396,6 +541,25 @@ mod tests {
                 let mut body = vec![0; length];
                 reader.read_exact(&mut body).unwrap();
                 let body = String::from_utf8(body).unwrap();
+                if body.contains("\"modalities\"") {
+                    let request: Value = serde_json::from_str(&body).unwrap();
+                    assert_eq!(request["stream"], json!(true), "audio output needs a stream");
+                    assert_eq!(request["audio"]["format"], json!("pcm16"));
+                    let pcm = BASE64.encode([1u8, 0, 2, 0, 3, 0]);
+                    let events = format!(
+                        "data: {}\n\ndata: {}\n\ndata: [DONE]\n\n",
+                        json!({ "choices": [{ "delta": { "audio": { "data": pcm, "transcript": "What is the " } } }] }),
+                        json!({ "choices": [{ "delta": { "audio": { "transcript": "largest planet?" } } }] }),
+                    );
+                    write!(
+                        stream,
+                        "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        events.len(),
+                        events
+                    )
+                    .unwrap();
+                    continue;
+                }
                 let reply = if request_line.contains("/models") {
                     json!({ "data": [] })
                 } else if body.contains("cleanup step") {
@@ -421,7 +585,7 @@ mod tests {
 
     #[test]
     fn cleans_and_marks_through_openrouter() {
-        let url = mock_server(3);
+        let url = mock_server(4);
         // SAFETY: this is the only test that sets environment variables.
         unsafe {
             std::env::set_var("FLASHCARDS_OPENROUTER_URL", &url);
@@ -448,6 +612,20 @@ mod tests {
         })
         .unwrap();
         assert_eq!(m.verdict, "not_yet");
+
+        let cache = std::env::temp_dir().join(format!("flashcards-test-{}", std::process::id()));
+        let request = SpeakRequest {
+            text: "What is the largest planet?".into(),
+            lang: "en".into(),
+            voice: "alloy".into(),
+            model: "openai/gpt-audio-mini".into(),
+        };
+        let wav = speak(&request, &cache).unwrap();
+        assert_eq!(&wav[..4], b"RIFF");
+        assert_eq!(wav.len(), 44 + 6);
+        // The second time comes from the cache: the mock server has no requests left.
+        assert_eq!(speak(&request, &cache).unwrap(), wav);
+        let _ = std::fs::remove_dir_all(&cache);
     }
 
     #[test]

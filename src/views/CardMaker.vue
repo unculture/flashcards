@@ -4,9 +4,11 @@ import Icon from "../components/Icon.vue";
 import LiveText from "../components/LiveText.vue";
 import MicButton from "../components/MicButton.vue";
 import ModelBanner from "../components/ModelBanner.vue";
+import SpeakButton from "../components/SpeakButton.vue";
 import TypeDialog from "../components/TypeDialog.vue";
 import { cleanupText } from "../ai";
-import { addCard, findDeck, modelFor } from "../library";
+import { addCard, findDeck, library, modelFor } from "../library";
+import { speak } from "../voice";
 import { go, useSpaceToTalk } from "../router";
 import {
   cancelDictation,
@@ -111,6 +113,7 @@ async function finishRecording() {
     return;
   }
   setSide(side, { text, heard: text });
+  if (library.settings.readBack) speak(text, langOf(side));
   tidyUp(side, text);
 }
 
@@ -235,6 +238,7 @@ useSpaceToTalk(pressMic);
     >
       <div class="side-head">
         <span class="side-label">{{ side === "front" ? "Question" : "Answer" }}</span>
+        <span class="spacer" />
         <span v-if="isTidying(side)" class="tidying">Tidying up…</span>
         <button
           v-else-if="draft[side].heard && draft[side].heard !== draft[side].text && recordingSide !== side"
@@ -245,6 +249,12 @@ useSpaceToTalk(pressMic);
         >
           Use what I said
         </button>
+        <SpeakButton
+          v-if="recordingSide !== side"
+          :text="draft[side].text"
+          :lang="langOf(side)"
+          size="small"
+        />
       </div>
       <LiveText
         :text="shownText(side)"
@@ -311,6 +321,9 @@ useSpaceToTalk(pressMic);
   justify-content: space-between;
   margin-bottom: 4px;
   min-height: 44px;
+}
+.spacer {
+  flex: 1;
 }
 .tidying {
   color: var(--muted);

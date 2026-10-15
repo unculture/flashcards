@@ -2,6 +2,7 @@ import { reactive } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { ModelId } from "./types";
+import { stopSpeaking } from "./voice";
 
 // ---------------------------------------------------------------------------
 // Speech models
@@ -83,10 +84,11 @@ let sessionId: number | null = null;
 
 export async function startDictation(model: ModelId): Promise<boolean> {
   if (dictation.state !== "idle") return false;
+  stopSpeaking();
   dictation.error = null;
   dictation.partial = "";
   if (!models[model].installed) {
-    dictation.error = "The voice is still getting ready. Try again in a moment.";
+    dictation.error = "Speech-to-text is still getting ready. Try again in a moment.";
     ensureModel(model);
     return false;
   }
@@ -129,7 +131,7 @@ export function cancelDictation() {
 
 function friendlyError(message: string): string {
   if (message.includes("model-not-installed")) {
-    return "The voice is still getting ready. Try again in a moment.";
+    return "Speech-to-text is still getting ready. Try again in a moment.";
   }
   if (message.includes("mic-silent")) {
     return navigator.userAgent.includes("Mac")

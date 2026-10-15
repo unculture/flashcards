@@ -38,6 +38,13 @@ export interface Settings {
   marking: boolean;
   /** The OpenRouter model for cleanup and marking. */
   aiModel: string;
+  /** Show read-aloud buttons. Needs the OpenRouter key. */
+  readAloud: boolean;
+  /** Read each side aloud after she speaks it, and each card as it comes up in practice. */
+  readBack: boolean;
+  /** The OpenRouter audio model and its voice. */
+  voiceModel: string;
+  voice: string;
 }
 
 /**

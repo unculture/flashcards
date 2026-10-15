@@ -5,7 +5,15 @@ import { BOXES, type Card, type Deck, type Lang, type Library, type ModelId } fr
 export const library = reactive<Library>({
   version: 1,
   decks: [],
-  settings: { cleanup: true, marking: true, aiModel: "openai/gpt-5.6-luna" },
+  settings: {
+    cleanup: true,
+    marking: true,
+    aiModel: "openai/gpt-5.6-luna",
+    readAloud: true,
+    readBack: false,
+    voiceModel: "openai/gpt-audio-mini",
+    voice: "alloy",
+  },
 });
 
 export const loaded = ref(false);

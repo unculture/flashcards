@@ -3,6 +3,7 @@ import { ref } from "vue";
 import Icon from "../components/Icon.vue";
 import { AI_MODELS, ai, clearKey, hasKey, saveKey } from "../ai";
 import { library } from "../library";
+import { VOICES, VOICE_MODELS, speak, voice } from "../voice";
 import { go } from "../router";
 import { ensureModel, models } from "../speech";
 import type { ModelId } from "../types";
@@ -88,8 +89,57 @@ async function submitKey() {
     </div>
 
     <div class="panel">
-      <h2>Voices</h2>
-      <p class="hint">Speech turns into text on this computer. Each voice downloads once.</p>
+      <h2>Read aloud</h2>
+      <p class="hint">
+        A voice from OpenRouter reads cards aloud. It needs the OpenRouter key above. Each card is read by the
+        AI only once, then kept on this computer.
+      </p>
+      <label class="toggle">
+        <input v-model="library.settings.readAloud" type="checkbox" />
+        <span>Show read-aloud buttons</span>
+      </label>
+      <label class="toggle">
+        <input v-model="library.settings.readBack" type="checkbox" :disabled="!library.settings.readAloud" />
+        <span>Read each card aloud automatically</span>
+      </label>
+
+      <h3>Voice</h3>
+      <div class="chips">
+        <button
+          v-for="v in VOICES"
+          :key="v"
+          type="button"
+          class="chip"
+          :class="{ on: library.settings.voice === v }"
+          @click="library.settings.voice = v"
+        >
+          {{ v }}
+        </button>
+      </div>
+      <div class="row try">
+        <button
+          type="button"
+          class="button"
+          :disabled="!hasKey || !library.settings.readAloud || !!voice.loading"
+          @click="speak('Hello! This is how I will read your flashcards. What is the largest planet?', 'en')"
+        >
+          <Icon name="speaker" :size="22" /> {{ voice.loading ? "Getting the voice…" : "Try this voice" }}
+        </button>
+      </div>
+      <p v-if="voice.error" class="error-text">{{ voice.error }}</p>
+
+      <h3>Voice model</h3>
+      <label v-for="m in VOICE_MODELS" :key="m.id" class="toggle">
+        <input v-model="library.settings.voiceModel" type="radio" name="voice-model" :value="m.id" />
+        <span>
+          <strong>{{ m.title }}</strong> <span class="hint">· {{ m.detail }}</span>
+        </span>
+      </label>
+    </div>
+
+    <div class="panel">
+      <h2>Speech recognition</h2>
+      <p class="hint">Speech turns into text on this computer. Each language downloads once.</p>
       <div v-for="id in ids" :key="id" class="model">
         <div>
           <strong>{{ models[id].label }}</strong>
@@ -161,6 +211,31 @@ h3 {
 }
 .error-text {
   color: var(--danger);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  font: inherit;
+  text-transform: capitalize;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.chip.on {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  font-weight: 600;
+}
+.try {
+  margin-top: 12px;
 }
 .toggle {
   display: flex;

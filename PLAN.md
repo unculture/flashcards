@@ -149,7 +149,14 @@ The text shrinks to fit each card and uses the same readable font as the app.
 
 ### Read aloud
 
-Removed for now, because the default system voice sounded too poor. Add it back later with a better voice, for example a remote text-to-speech API. Then she could check every side by listening, without having to proofread her own spelling.
+The system voices sounded too poor, so read-aloud uses an OpenRouter audio model instead (`openai/gpt-audio-mini` by default, `openai/gpt-audio` as an option), through the same key. These are chat models that answer in audio, so:
+
+- The system prompt tells the model to read the text word for word, and never to answer it.
+- The model's own transcript of what it said is compared with the card text, with the same word-count check as the cleanup. If they differ too much, the audio does not play.
+- OpenRouter sends audio output only as a stream. The app asks for 16-bit PCM at 24 kHz and wraps it in a WAV header.
+- Each result is cached on disk, keyed by model, voice, language, and text.
+
+Settings: show the buttons (on by default), read automatically (off by default), the voice (10 OpenAI voices, with "Try this voice"), and the model.
 
 ## Design for dyslexia
 

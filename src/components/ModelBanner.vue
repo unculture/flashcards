@@ -12,18 +12,18 @@ const percent = computed(() => Math.round(m.value.progress * 100));
 <template>
   <div v-if="!m.installed" class="banner">
     <template v-if="m.error">
-      <p>The voice download stopped. Check the internet connection.</p>
+      <p>The speech download stopped. Check the internet connection.</p>
       <button type="button" class="button primary" @click="ensureModel(model)">Try again</button>
     </template>
     <template v-else-if="m.downloading">
       <p>
-        Getting the {{ model === "english" ? "" : "French " }}voice ready… {{ percent }}%
+        Getting {{ model === "english" ? "" : "French " }}speech-to-text ready… {{ percent }}%
       </p>
       <div class="bar"><div class="fill" :style="{ width: percent + '%' }" /></div>
       <p class="small">This happens only once. It downloads about {{ m.downloadMb }} MB.</p>
     </template>
     <template v-else>
-      <p>The {{ model === "english" ? "" : "French " }}voice needs a one-time download (about {{ m.downloadMb }} MB).</p>
+      <p>{{ model === "english" ? "Speech-to-text" : "French speech-to-text" }} needs a one-time download (about {{ m.downloadMb }} MB).</p>
       <button type="button" class="button primary" @click="ensureModel(model)">Download it</button>
     </template>
   </div>
