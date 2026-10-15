@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds Flashcards.app and installs it in ~/Applications, replacing an older copy.
+# Builds Flashcards.app and installs it in /Applications, replacing an older copy.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -15,11 +15,12 @@ fi
 npx tauri build --bundles app
 
 app="src-tauri/target/release/bundle/macos/Flashcards.app"
-target="$HOME/Applications/Flashcards.app"
+target="/Applications/Flashcards.app"
 
 osascript -e 'quit app "Flashcards"' 2>/dev/null || true
-mkdir -p "$HOME/Applications"
 rm -rf "$target"
 cp -R "$app" "$target"
+# An older version of this script installed in ~/Applications.
+rm -rf "$HOME/Applications/Flashcards.app"
 echo "Installed $target"
 open "$target"

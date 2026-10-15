@@ -55,7 +55,7 @@ npm install
 npm run tauri dev
 ```
 
-To build the Mac app and install it in `~/Applications` (it replaces an older copy, then opens the app):
+To build the Mac app and install it in `/Applications` (it replaces an older copy, then opens the app):
 
 ```sh
 npm run install:mac
@@ -66,7 +66,7 @@ The app has an ad-hoc signature, so it runs on the Mac that built it. macOS trea
 To check the microphone from the terminal, with the app's own permission:
 
 ```sh
-open -n -W --stdout /dev/stdout ~/Applications/Flashcards.app --args --mic-test
+open -n -W --stdout /dev/stdout /Applications/Flashcards.app --args --mic-test
 ```
 
 The first build downloads the prebuilt sherpa-onnx libraries. Pushes to `main` build the Windows installer with GitHub Actions.
