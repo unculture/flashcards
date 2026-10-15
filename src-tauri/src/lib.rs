@@ -152,6 +152,12 @@ async fn stop_dictation(state: State<'_, AppState>, id: u64) -> Result<String, S
         if audio.len() < MIN_SAMPLES {
             return Ok(String::new());
         }
+        // A real microphone is never perfectly silent. Only zeros means the
+        // system blocks the microphone for this app (macOS and Windows both
+        // do this when microphone access is off).
+        if audio.iter().all(|&s| s == 0.0) {
+            return Err("mic-silent".into());
+        }
         audio.resize(audio.len() + TAIL_PADDING, 0.0);
         Ok(transcribe(&session.recognizer, &audio))
     })
@@ -231,6 +237,41 @@ pub fn dev_transcribe(model_dir: &str, wav_path: &str) {
         if n == samples.len() {
             break;
         }
+    }
+}
+
+/// Developer command: `flashcards --mic-test`. Records 3 seconds from the
+/// default microphone and prints the level. All zeros means that the system
+/// gives the app silence, which usually means that microphone access is off.
+pub fn dev_mic_test() {
+    use cpal::traits::{DeviceTrait, HostTrait};
+    let host = cpal::default_host();
+    match host.default_input_device() {
+        Some(device) => {
+            println!("device: {}", device.name().unwrap_or_default());
+            match device.default_input_config() {
+                Ok(config) => println!("config: {config:?}"),
+                Err(err) => println!("config error: {err}"),
+            }
+        }
+        None => println!("no input device"),
+    }
+    let started = Instant::now();
+    let recorder = match Recorder::start(|_| {}) {
+        Ok(recorder) => recorder,
+        Err(err) => {
+            println!("start failed after {:?}: {err}", started.elapsed());
+            return;
+        }
+    };
+    println!("started in {:?}, recording 3 s…", started.elapsed());
+    std::thread::sleep(Duration::from_secs(3));
+    let samples = recorder.stop();
+    let peak = samples.iter().fold(0.0f32, |m, s| m.max(s.abs()));
+    let rms = (samples.iter().map(|s| s * s).sum::<f32>() / samples.len().max(1) as f32).sqrt();
+    println!("samples: {} (16 kHz), peak: {peak:.4}, rms: {rms:.5}", samples.len());
+    if peak == 0.0 {
+        println!("SILENT: the system gave only zeros. Check microphone access in System Settings.");
     }
 }
 

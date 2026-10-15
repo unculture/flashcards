@@ -131,6 +131,11 @@ function friendlyError(message: string): string {
   if (message.includes("model-not-installed")) {
     return "The voice is still getting ready. Try again in a moment.";
   }
+  if (message.includes("mic-silent")) {
+    return navigator.userAgent.includes("Mac")
+      ? "The microphone is switched off for Flashcards. Turn it on in System Settings › Privacy & Security › Microphone."
+      : "The microphone is switched off. Open Settings › Privacy & security › Microphone, and turn on microphone access for desktop apps.";
+  }
   return message;
 }
 

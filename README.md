@@ -12,7 +12,7 @@ The plan and the progress are in [PLAN.md](PLAN.md).
 4. Windows shows "Windows protected your PC", because the installer is not signed. Click **More info**, then **Run anyway**.
 5. Open Flashcards. On the first launch, it downloads the English voice, about 500 MB. Dictation works when the download finishes.
 
-If the microphone does not work, open Settings > Privacy & security > Microphone, and turn on "Let desktop apps access your microphone".
+If the microphone does not work, open Settings > Privacy & security > Microphone, and turn on "Let desktop apps access your microphone". When microphone access is off, Windows gives the app silence, and Flashcards shows a message about it.
 
 ## Use Flashcards
 
@@ -61,7 +61,13 @@ To build the Mac app and install it in `~/Applications` (it replaces an older co
 npm run install:mac
 ```
 
-The app has an ad-hoc signature, so it runs on the Mac that built it. After each rebuild, macOS may ask again for the microphone and for keychain access.
+The app has an ad-hoc signature, so it runs on the Mac that built it. macOS treats each rebuild as a new app, so the microphone permission can stop working: the app then gets only silence and shows "The microphone is switched off". To make macOS ask again, run `tccutil reset Microphone com.unculture.flashcards`, then tap the microphone and click Allow. macOS may also ask again for keychain access.
+
+To check the microphone from the terminal, with the app's own permission:
+
+```sh
+open -n -W --stdout /dev/stdout ~/Applications/Flashcards.app --args --mic-test
+```
 
 The first build downloads the prebuilt sherpa-onnx libraries. Pushes to `main` build the Windows installer with GitHub Actions.
 
