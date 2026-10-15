@@ -4,9 +4,8 @@ import Icon from "../components/Icon.vue";
 import LiveText from "../components/LiveText.vue";
 import MicButton from "../components/MicButton.vue";
 import ModelBanner from "../components/ModelBanner.vue";
-import SpeakButton from "../components/SpeakButton.vue";
 import TypeDialog from "../components/TypeDialog.vue";
-import { addCard, findDeck, library, modelFor } from "../library";
+import { addCard, findDeck, modelFor } from "../library";
 import { go, useSpaceToTalk } from "../router";
 import {
   cancelDictation,
@@ -14,7 +13,6 @@ import {
   ensureModel,
   models,
   preloadModel,
-  speak,
   startDictation,
   stopDictation,
 } from "../speech";
@@ -105,7 +103,6 @@ async function finishRecording() {
     return;
   }
   setSide(side, { text, heard: text });
-  if (library.settings.readBack) speak(text, langOf(side));
 }
 
 /** Puts new text on a side, then moves on: question to answer, answer to save. */
@@ -187,7 +184,6 @@ useSpaceToTalk(pressMic);
     >
       <div class="side-head">
         <span class="side-label">{{ side === "front" ? "Question" : "Answer" }}</span>
-        <SpeakButton :text="draft[side].text" :lang="langOf(side)" size="small" />
       </div>
       <LiveText
         :text="shownText(side)"

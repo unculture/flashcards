@@ -1,7 +1,7 @@
 import { reactive } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Lang, ModelId } from "./types";
+import type { ModelId } from "./types";
 
 // ---------------------------------------------------------------------------
 // Speech models
@@ -83,7 +83,6 @@ let sessionId: number | null = null;
 
 export async function startDictation(model: ModelId): Promise<boolean> {
   if (dictation.state !== "idle") return false;
-  stopSpeaking();
   dictation.error = null;
   dictation.partial = "";
   if (!models[model].installed) {
@@ -136,37 +135,6 @@ function friendlyError(message: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Read aloud
-// ---------------------------------------------------------------------------
-
-const VOICE_LANG: Record<Lang, string> = { en: "en-GB", fr: "fr-FR" };
-
-function pickVoice(lang: Lang): SpeechSynthesisVoice | undefined {
-  const voices = speechSynthesis.getVoices();
-  const wanted = VOICE_LANG[lang].toLowerCase();
-  const prefix = wanted.slice(0, 2);
-  return (
-    voices.find((v) => v.lang.toLowerCase().replace("_", "-") === wanted) ??
-    voices.find((v) => v.lang.toLowerCase().startsWith(prefix))
-  );
-}
-
-export function speak(text: string, lang: Lang) {
-  if (!text.trim() || !("speechSynthesis" in window)) return;
-  speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = VOICE_LANG[lang];
-  const voice = pickVoice(lang);
-  if (voice) utterance.voice = voice;
-  utterance.rate = 0.95;
-  speechSynthesis.speak(utterance);
-}
-
-export function stopSpeaking() {
-  if ("speechSynthesis" in window) speechSynthesis.cancel();
-}
-
-// ---------------------------------------------------------------------------
 
 export async function initSpeech() {
   await listen<number>("dictation-level", (e) => {
@@ -192,6 +160,4 @@ export async function initSpeech() {
     m.error = e.payload.message;
   });
   await refreshModels();
-  // Voices load in the background in some web views.
-  if ("speechSynthesis" in window) speechSynthesis.getVoices();
 }

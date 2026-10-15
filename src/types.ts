@@ -1,7 +1,7 @@
 /** A speech model in the back end. */
 export type ModelId = "english" | "multilingual";
 
-/** The language of one side of a card. It picks the speech model and the voice. */
+/** The language of one side of a card. It picks the speech model. */
 export type Lang = "en" | "fr";
 
 export interface Side {
@@ -31,10 +31,8 @@ export interface Deck {
   cards: Card[];
 }
 
-export interface Settings {
-  /** Read each side aloud after she speaks it. */
-  readBack: boolean;
-}
+// Empty for now. Read-aloud was removed until a better voice is available.
+export type Settings = Record<string, never>;
 
 /**
  * The whole library. This is also the exchange format for a future iPhone

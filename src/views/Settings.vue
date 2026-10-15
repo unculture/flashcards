@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import Icon from "../components/Icon.vue";
-import { library } from "../library";
 import { go } from "../router";
 import { ensureModel, models } from "../speech";
 import type { ModelId } from "../types";
@@ -16,13 +15,6 @@ const ids: ModelId[] = ["english", "multilingual"];
       </button>
       <h1>Settings</h1>
     </header>
-
-    <div class="panel">
-      <label class="toggle">
-        <input v-model="library.settings.readBack" type="checkbox" />
-        <span>Read cards aloud automatically</span>
-      </label>
-    </div>
 
     <div class="panel">
       <h2>Voices</h2>
@@ -59,19 +51,6 @@ h2 {
 }
 .hint {
   color: var(--muted);
-}
-.toggle {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 1.2rem;
-  cursor: pointer;
-  min-height: 48px;
-}
-.toggle input {
-  width: 28px;
-  height: 28px;
-  accent-color: var(--accent);
 }
 .model {
   display: flex;

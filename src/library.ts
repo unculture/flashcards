@@ -5,7 +5,7 @@ import { BOXES, type Card, type Deck, type Lang, type Library, type ModelId } fr
 export const library = reactive<Library>({
   version: 1,
   decks: [],
-  settings: { readBack: true },
+  settings: {},
 });
 
 export const loaded = ref(false);

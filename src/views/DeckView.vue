@@ -2,7 +2,6 @@
 import { computed, ref } from "vue";
 import BoxBar from "../components/BoxBar.vue";
 import Icon from "../components/Icon.vue";
-import SpeakButton from "../components/SpeakButton.vue";
 import { deleteCard, deleteDeck, findDeck, isDue } from "../library";
 import { go } from "../router";
 
@@ -61,11 +60,9 @@ function removeDeck() {
       <li v-for="card in [...deck.cards].reverse()" :key="card.id" class="card">
         <div class="texts">
           <div class="q">
-            <SpeakButton :text="card.front.text" :lang="deck.frontLang" size="small" />
             <span>{{ card.front.text }}</span>
           </div>
           <div class="a">
-            <SpeakButton :text="card.back.text" :lang="deck.backLang" size="small" />
             <span>{{ card.back.text }}</span>
           </div>
         </div>

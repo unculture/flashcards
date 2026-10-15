@@ -3,7 +3,6 @@
 const PATHS = {
   mic: "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M19 11a7 7 0 0 1-14 0 M12 18v3",
   stop: "M7 7h10v10H7z",
-  speaker: "M4 9v6h4l5 4V5L8 9H4z M16.5 8.5a5 5 0 0 1 0 7 M19 6a8.5 8.5 0 0 1 0 12",
   back: "M15 5l-7 7 7 7",
   pencil: "M4 20h4L19 9l-4-4L4 16v4z M13.5 6.5l4 4",
   trash: "M5 7h14 M10 7V4h4v3 M7 7l1 13h8l1-13",

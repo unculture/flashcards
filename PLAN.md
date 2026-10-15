@@ -26,7 +26,7 @@ The main goals:
 |---|---|---|
 | App framework | Tauri 2, with a web front end (HTML, CSS, JavaScript) and a Rust back end | Small installer (about 10 MB plus the models), low memory use, builds for Mac and Windows, and can build for iOS later |
 | Speech to text | sherpa-onnx running NVIDIA Parakeet 0.6B on the CPU, on the laptop | Same model family as Patter. Works offline after the model download. |
-| Read aloud | Windows built-in voices, through the browser speech API in WebView2 | Offline and free |
+| Read aloud | Removed for now: the built-in voices sounded too poor. Later, maybe a remote voice API. | |
 | AI cleanup and marking | OpenRouter with a low-cost model, like Patter | The user provides the key |
 | Windows installer | Built by GitHub Actions on a Windows runner | Building for Windows from a Mac is awkward. The installer is unsigned, so Windows shows "Windows protected your PC" one time on install. |
 
@@ -104,7 +104,7 @@ The cleanup must never change facts: dates, numbers, names, technical terms, or 
 This screen matters most.
 
 1. She opens a deck and taps New cards.
-2. She taps the microphone and says the question. The text shows as she speaks and is then read back to her.
+2. She taps the microphone and says the question. The text shows as she speaks.
 3. The screen moves to the answer side at once. She taps and speaks again.
 4. The card saves itself, and the next empty card is ready.
 
@@ -149,7 +149,7 @@ The text shrinks to fit each card and uses the same readable font as the app.
 
 ### Read aloud
 
-A speaker button on each card side, when she makes cards and when she practises.
+Removed for now, because the default system voice sounded too poor. Add it back later with a better voice, for example a remote text-to-speech API. Then she could check every side by listening, without having to proofread her own spelling.
 
 ## Design for dyslexia
 
@@ -182,10 +182,11 @@ A speaker button on each card side, when she makes cards and when she practises.
 As of 15 October 2026 (evening), version 0.1.0 is built:
 
 - Decks: create one by voice or by typing, choose English or French answers, view the decks, delete a deck.
-- Card making: the microphone flow with live text, the correction highlight, automatic read-back, saving without a Save button, redoing a side, and typing a side.
+- Card making: the microphone flow with live text, the correction highlight, saving without a Save button, redoing a side, and typing a side.
 - Practice: Leitner boxes, sessions of 10, answering by voice or showing the answer, Got it and Not yet, and "All caught up" and "Done for today" screens. No timers.
 - Printing: fold cards (5 on each A4 page) and double-sided cards (8 on each sheet).
-- Settings: the voice downloads and the read-aloud switch.
+- Settings: the voice downloads.
+- Read-aloud was built with the Windows and macOS system voices, then removed at the user's request, because the default voice sounded too poor.
 - Back end: cpal capture, live transcription that runs again about every 350 ms, a final pass with 0.4 s of padding, the model download (streamed through bzip2 and tar, with progress), and `library.json` with a backup.
 - The Windows installer builds with GitHub Actions. It is about 7 MB, and the build takes about 8 minutes. The sherpa-onnx static libraries link on Windows with no extra flags.
 
@@ -194,7 +195,6 @@ Measured on the M1 MacBook Pro (CPU, 4 threads): the English model loads in 1.2 
 Not tested yet:
 
 - the real microphone on any machine (only WAV files were transcribed)
-- read-aloud voices in WebView2 on Windows
 - the touch keyboard in tablet mode
 - speed on her i5
 - the multilingual model with French
