@@ -1,0 +1,163 @@
+@import "@fontsource-variable/lexend";
+
+:root {
+  /* Off-white, not pure white, and soft dark text: easier for dyslexic readers. */
+  --bg: #f7f3ea;
+  --surface: #fffdf7;
+  --text: #22282f;
+  --muted: #5d6670;
+  --faint: #9aa1a8;
+  --line: #e4ddcd;
+  --accent: #2c5c8f;
+  --accent-soft: #9cb7d4;
+  --accent-wash: #e3ecf5;
+  --record: #c4543c;
+  --highlight: #ffe59a;
+  --good: #3d8a6a;
+  --good-soft: #a9d3bf;
+  --soft-amber: #f3d9a4;
+  --warn: #a5541c;
+  --danger: #b3412f;
+  --radius: 18px;
+  --card-text: 1.75rem;
+
+  font-family: "Lexend Variable", "Segoe UI", system-ui, sans-serif;
+  font-size: 19px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  /* No text selection on taps: it gets in the way on a touchscreen. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.app {
+  padding: 24px 28px 48px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 1.9rem;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.top h1 {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.count {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.button {
+  font: inherit;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 22px;
+  border-radius: 14px;
+  border: 2px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+.button:hover:not(:disabled) {
+  border-color: var(--accent-soft);
+}
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+.button.big {
+  min-height: 72px;
+  font-size: 1.25rem;
+  padding: 0 28px;
+}
+.button.quiet {
+  background: transparent;
+}
+.button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
+.icon-button {
+  font: inherit;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.icon-button:hover:not(:disabled) {
+  background: var(--accent-wash);
+}
+.icon-button:disabled {
+  color: var(--faint);
+  cursor: default;
+}
+.icon-button.small {
+  width: 44px;
+  height: 44px;
+}
+
+.row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.row.center {
+  justify-content: center;
+}
+.row.end {
+  justify-content: flex-end;
+}
+
+.error {
+  background: #fbe3dc;
+  color: var(--danger);
+  padding: 12px 16px;
+  border-radius: 12px;
+}
+
+button:focus-visible {
+  outline: 3px solid var(--accent-soft);
+  outline-offset: 2px;
+}

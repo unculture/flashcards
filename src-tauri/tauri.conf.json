@@ -13,8 +13,11 @@
     "windows": [
       {
         "title": "Flashcards",
-        "width": 800,
-        "height": 600
+        "width": 1200,
+        "height": 820,
+        "minWidth": 640,
+        "minHeight": 560,
+        "maximized": true
       }
     ],
     "security": {
