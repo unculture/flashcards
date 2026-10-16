@@ -3,7 +3,7 @@
 //! Models come from the sherpa-onnx `asr-models` release. Each one is a
 //! tar.bz2 archive that unpacks to a folder with an int8 Parakeet transducer.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -82,7 +82,9 @@ struct ModelEvent {
 
 pub struct SpeechEngine {
     models_dir: PathBuf,
-    loaded: Mutex<Option<(ModelId, Arc<OfflineRecognizer>)>>,
+    /// One slot per model. Each has its own lock, so loading one model does
+    /// not hold up dictation with the other.
+    loaded: HashMap<ModelId, Mutex<Option<Arc<OfflineRecognizer>>>>,
     downloading: Mutex<HashSet<ModelId>>,
 }
 
@@ -90,7 +92,7 @@ impl SpeechEngine {
     pub fn new(models_dir: PathBuf) -> Self {
         Self {
             models_dir,
-            loaded: Mutex::new(None),
+            loaded: ModelId::ALL.iter().map(|&id| (id, Mutex::new(None))).collect(),
             downloading: Mutex::new(HashSet::new()),
         }
     }
@@ -180,21 +182,19 @@ impl SpeechEngine {
         Ok(())
     }
 
-    /// Returns the recognizer for `id`, loading it if needed. Only one model
-    /// stays in memory at a time.
+    /// Returns the recognizer for `id`, loading it if needed. Both models can
+    /// stay in memory (about 1.3 GB together), so a French deck does not
+    /// reload a model each time she switches sides.
     pub fn recognizer(&self, id: ModelId) -> Result<Arc<OfflineRecognizer>, String> {
-        let mut loaded = self.loaded.lock().unwrap();
-        if let Some((loaded_id, recognizer)) = loaded.as_ref() {
-            if *loaded_id == id {
-                return Ok(Arc::clone(recognizer));
-            }
+        let mut loaded = self.loaded[&id].lock().unwrap();
+        if let Some(recognizer) = loaded.as_ref() {
+            return Ok(Arc::clone(recognizer));
         }
         if !self.is_installed(id) {
             return Err("model-not-installed".into());
         }
-        *loaded = None;
         let recognizer = Arc::new(load_recognizer(&self.model_dir(id))?);
-        *loaded = Some((id, Arc::clone(&recognizer)));
+        *loaded = Some(Arc::clone(&recognizer));
         Ok(recognizer)
     }
 }
