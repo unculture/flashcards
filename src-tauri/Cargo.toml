@@ -1,6 +1,6 @@
 [package]
 name = "flashcards"
-version = "0.3.0"
+version = "0.4.0"
 description = "Voice-first flashcards"
 authors = ["James Browne"]
 license = "MIT"
