@@ -2,6 +2,7 @@ mod ai;
 mod audio;
 mod library;
 mod speech;
+mod update;
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -13,6 +14,7 @@ use serde_json::Value;
 use sherpa_onnx::OfflineRecognizer;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_opener::OpenerExt;
 
 use audio::Recorder;
 use library::Library;
@@ -229,6 +231,24 @@ fn save_library(state: State<AppState>, library: Value) -> Result<(), String> {
     state.library.save(&library)
 }
 
+/// Asks GitHub whether a newer version has been released.
+#[tauri::command]
+async fn check_for_update(app: AppHandle) -> Result<Option<update::Update>, String> {
+    let current = app.package_info().version.to_string();
+    tauri::async_runtime::spawn_blocking(move || update::check(&current))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Opens a release download in the browser.
+#[tauri::command]
+fn open_release_url(app: AppHandle, url: String) -> Result<(), String> {
+    if !update::is_release_url(&url) {
+        return Err("Not a Flashcards release link.".into());
+    }
+    app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+}
+
 /// The extension for exported decks. The files are JSON.
 const DECK_EXTENSION: &str = "flashcards";
 
@@ -340,6 +360,7 @@ pub fn dev_mic_test() {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             // Models are large, so on Windows they go in Local, not Roaming.
@@ -369,6 +390,8 @@ pub fn run() {
             ai_speak,
             save_deck_file,
             open_deck_file,
+            check_for_update,
+            open_release_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

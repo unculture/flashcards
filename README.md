@@ -18,6 +18,8 @@ On Windows:
 
 On a Mac with Apple silicon, download the `.dmg`, open it, and drag Flashcards to Applications. The app is not notarised, so the first time, open **System Settings › Privacy & Security** and click **Open Anyway**.
 
+Flashcards checks GitHub for a newer release when it starts, and once a day while it is open. When there is one, the home screen shows a banner. Download opens the installer for that computer in the browser, and running it updates the app. Decks and cards are kept. There is no automatic updating.
+
 Each push to `main` also builds a Windows installer for testing. It is under Artifacts in the newest run of the [Windows installer workflow](https://github.com/unculture/flashcards/actions/workflows/windows.yml), which needs a GitHub login.
 
 If the microphone does not work, open Settings > Privacy & security > Microphone, and turn on "Let desktop apps access your microphone". When microphone access is off, Windows gives the app silence, and Flashcards shows a message about it.

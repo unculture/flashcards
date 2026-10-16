@@ -2,6 +2,7 @@
 import BoxBar from "../components/BoxBar.vue";
 import Icon from "../components/Icon.vue";
 import ModelBanner from "../components/ModelBanner.vue";
+import UpdateBanner from "../components/UpdateBanner.vue";
 import { ref } from "vue";
 import { openDecks } from "../exchange";
 import { library } from "../library";
@@ -31,6 +32,7 @@ async function openFile() {
       </button>
     </header>
 
+    <UpdateBanner />
     <ModelBanner model="english" />
 
     <div class="grid">

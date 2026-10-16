@@ -4,6 +4,7 @@ import { library, loadLibrary, loaded, saveError } from "./library";
 import { route } from "./router";
 import { refreshKey } from "./ai";
 import { ensureModel, initSpeech } from "./speech";
+import { startUpdateChecks } from "./update";
 import CardMaker from "./views/CardMaker.vue";
 import DeckView from "./views/DeckView.vue";
 import Home from "./views/Home.vue";
@@ -23,6 +24,7 @@ onMounted(async () => {
     // by the time she has named her first deck.
     ensureModel("english");
     if (library.decks.some((d) => d.backLang === "fr")) ensureModel("multilingual");
+    startUpdateChecks();
   } catch (err) {
     startError.value = String(err);
   }

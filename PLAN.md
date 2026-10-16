@@ -227,6 +227,8 @@ On 16 October:
 - An app icon: two flashcards with a speech bubble (`design/`).
 - Tagged releases build the Windows and Mac installers and publish them on GitHub releases (`scripts/release.sh`).
 
+Later on 16 October: an MIT licence, a website at https://unculture.github.io/flashcards/ (from `site/`), and an update check. The app asks GitHub for the latest release at startup and daily. A newer version shows a banner on the home screen that opens the installer download. There is no self-updater.
+
 ### Next steps
 
 1. Test on her laptop: the microphone, the touch keyboard in tablet mode, speed on her i5, and French.
