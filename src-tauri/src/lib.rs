@@ -12,6 +12,7 @@ use serde::Serialize;
 use serde_json::Value;
 use sherpa_onnx::OfflineRecognizer;
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_dialog::DialogExt;
 
 use audio::Recorder;
 use library::Library;
@@ -228,6 +229,56 @@ fn save_library(state: State<AppState>, library: Value) -> Result<(), String> {
     state.library.save(&library)
 }
 
+/// The extension for exported decks. The files are JSON.
+const DECK_EXTENSION: &str = "flashcards";
+
+/// Saves `text` to a file chosen in a save dialog. Returns false if the dialog
+/// was cancelled.
+#[tauri::command]
+async fn save_deck_file(window: tauri::WebviewWindow, name: String, text: String) -> Result<bool, String> {
+    let picked = tauri::async_runtime::spawn_blocking(move || {
+        window
+            .dialog()
+            .file()
+            .set_parent(&window)
+            .add_filter("Flashcards", &[DECK_EXTENSION])
+            .set_file_name(format!("{name}.{DECK_EXTENSION}"))
+            .blocking_save_file()
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    let Some(path) = picked else { return Ok(false) };
+    let mut path = path.into_path().map_err(|e| e.to_string())?;
+    if path.extension().is_none() {
+        path.set_extension(DECK_EXTENSION);
+    }
+    std::fs::write(&path, text).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+/// Reads a deck file chosen in an open dialog. Returns None if the dialog was
+/// cancelled.
+#[tauri::command]
+async fn open_deck_file(window: tauri::WebviewWindow) -> Result<Option<String>, String> {
+    let picked = tauri::async_runtime::spawn_blocking(move || {
+        window
+            .dialog()
+            .file()
+            .set_parent(&window)
+            .add_filter("Flashcards", &[DECK_EXTENSION, "json"])
+            .blocking_pick_file()
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    let Some(path) = picked else { return Ok(None) };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let size = std::fs::metadata(&path).map_err(|e| e.to_string())?.len();
+    if size > 50 * 1024 * 1024 {
+        return Err("That file is too big to be a deck.".into());
+    }
+    std::fs::read_to_string(&path).map(Some).map_err(|_| "That file could not be read.".into())
+}
+
 /// Developer command: `flashcards --transcribe <model dir> <wav>`. Prints the
 /// load time, the time for a full transcription, and the times for growing
 /// prefixes of the audio, which is what live transcription does.
@@ -288,6 +339,7 @@ pub fn dev_mic_test() {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             // Models are large, so on Windows they go in Local, not Roaming.
@@ -315,6 +367,8 @@ pub fn run() {
             ai_cleanup,
             ai_mark,
             ai_speak,
+            save_deck_file,
+            open_deck_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

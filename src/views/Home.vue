@@ -2,8 +2,24 @@
 import BoxBar from "../components/BoxBar.vue";
 import Icon from "../components/Icon.vue";
 import ModelBanner from "../components/ModelBanner.vue";
+import { ref } from "vue";
+import { openDecks } from "../exchange";
 import { library } from "../library";
 import { go } from "../router";
+
+const openMessage = ref<string | null>(null);
+
+async function openFile() {
+  openMessage.value = null;
+  try {
+    const added = await openDecks();
+    if (!added) return;
+    if (added.length === 1) go({ name: "deck", deckId: added[0].id });
+    else openMessage.value = `Added ${added.length} decks.`;
+  } catch (err) {
+    openMessage.value = err instanceof Error ? err.message : String(err);
+  }
+}
 </script>
 
 <template>
@@ -36,6 +52,13 @@ import { go } from "../router";
         </span>
         <BoxBar :deck="deck" />
       </button>
+    </div>
+
+    <div class="footer">
+      <button type="button" class="button quiet" @click="openFile">
+        <Icon name="open" :size="22" /> Open a deck file
+      </button>
+      <span v-if="openMessage" class="hint">{{ openMessage }}</span>
     </div>
   </section>
 </template>
@@ -76,6 +99,16 @@ import { go } from "../router";
   font-size: 1.4rem;
   font-weight: 600;
   line-height: 1.25;
+}
+.footer {
+  margin: 28px 0 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.hint {
+  color: var(--muted);
 }
 .meta {
   color: var(--muted);

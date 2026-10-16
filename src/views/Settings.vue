@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import Icon from "../components/Icon.vue";
 import { AI_MODELS, ai, clearKey, hasKey, saveKey } from "../ai";
+import { openDecks, saveDecks } from "../exchange";
 import { library } from "../library";
 import { VOICES, VOICE_MODELS, speak, voice } from "../voice";
 import { go } from "../router";
@@ -14,6 +15,28 @@ const keyInput = ref("");
 const keyBusy = ref(false);
 const keyError = ref<string | null>(null);
 const replacing = ref(false);
+
+const backupMessage = ref<string | null>(null);
+
+async function backUp() {
+  backupMessage.value = null;
+  const date = new Date().toISOString().slice(0, 10);
+  try {
+    if (await saveDecks(library.decks, `Flashcards backup ${date}`)) backupMessage.value = "Saved.";
+  } catch (err) {
+    backupMessage.value = `It didn't save: ${err}`;
+  }
+}
+
+async function restore() {
+  backupMessage.value = null;
+  try {
+    const added = await openDecks();
+    if (added) backupMessage.value = `Added ${added.length} ${added.length === 1 ? "deck" : "decks"}.`;
+  } catch (err) {
+    backupMessage.value = err instanceof Error ? err.message : String(err);
+  }
+}
 
 async function submitKey() {
   keyBusy.value = true;
@@ -148,6 +171,23 @@ async function submitKey() {
         </button>
       </div>
     </div>
+
+    <div class="panel">
+      <h2>Backup</h2>
+      <p class="hint">
+        Save every deck, with her progress, in one file. Opening a file adds its decks. Decks that are
+        already here come in as copies, so nothing is overwritten.
+      </p>
+      <div class="row backup">
+        <button type="button" class="button" :disabled="!library.decks.length" @click="backUp">
+          <Icon name="save" :size="22" /> Save all decks
+        </button>
+        <button type="button" class="button" @click="restore">
+          <Icon name="open" :size="22" /> Open a file
+        </button>
+        <span v-if="backupMessage" class="hint">{{ backupMessage }}</span>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -232,6 +272,9 @@ h3 {
 }
 .try {
   margin-top: 12px;
+}
+.backup {
+  align-items: center;
 }
 .toggle {
   display: flex;

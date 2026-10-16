@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import BoxBar from "../components/BoxBar.vue";
 import Icon from "../components/Icon.vue";
 import SpeakButton from "../components/SpeakButton.vue";
+import { saveDecks } from "../exchange";
 import { deleteCard, deleteDeck, findDeck, isDue } from "../library";
 import { go } from "../router";
 
@@ -11,6 +12,18 @@ const deck = computed(() => findDeck(props.deckId));
 const dueCount = computed(() => deck.value?.cards.filter((c) => isDue(c)).length ?? 0);
 const confirmingDeck = ref(false);
 const confirmingCard = ref<string | null>(null);
+
+const saveMessage = ref<string | null>(null);
+
+async function saveToFile() {
+  if (!deck.value) return;
+  saveMessage.value = null;
+  try {
+    if (await saveDecks([deck.value], deck.value.name)) saveMessage.value = "Saved.";
+  } catch (err) {
+    saveMessage.value = `It didn't save: ${err}`;
+  }
+}
 
 function removeDeck() {
   deleteDeck(props.deckId);
@@ -97,9 +110,16 @@ function removeDeck() {
         <button type="button" class="button quiet" @click="confirmingDeck = false">Keep it</button>
         <button type="button" class="button danger" @click="removeDeck">Delete deck</button>
       </template>
-      <button v-else type="button" class="button quiet" @click="confirmingDeck = true">
-        <Icon name="trash" :size="22" /> Delete deck
-      </button>
+      <template v-else>
+        <button type="button" class="button quiet" :disabled="!deck.cards.length" @click="saveToFile">
+          <Icon name="save" :size="22" /> Save to a file
+        </button>
+        <span v-if="saveMessage" class="hint">{{ saveMessage }}</span>
+        <span class="spacer" />
+        <button type="button" class="button quiet" @click="confirmingDeck = true">
+          <Icon name="trash" :size="22" /> Delete deck
+        </button>
+      </template>
     </div>
   </section>
 </template>
@@ -187,6 +207,9 @@ function removeDeck() {
 .card-actions {
   display: flex;
   gap: 6px;
+}
+.spacer {
+  flex: 1;
 }
 .footer {
   margin: 32px 0 12px;

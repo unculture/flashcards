@@ -26,6 +26,7 @@ tar = "0.4"
 # The OpenRouter key goes in Windows Credential Manager or the macOS keychain.
 keyring = { version = "3", features = ["windows-native", "apple-native"] }
 base64 = "0.22"
+tauri-plugin-dialog = "2"
 
 [profile.release]
 codegen-units = 1
