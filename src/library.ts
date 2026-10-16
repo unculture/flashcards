@@ -12,6 +12,7 @@ export const library = reactive<Library>({
     readAloud: true,
     voiceModel: "openai/gpt-audio-mini",
     voice: "alloy",
+    sounds: true,
   },
 });
 

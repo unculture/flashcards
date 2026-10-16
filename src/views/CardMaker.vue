@@ -15,14 +15,16 @@ import {
   ensureModel,
   models,
   preloadModel,
+  restartDictation,
   startDictation,
   stopDictation,
 } from "../speech";
 import type { Side } from "../types";
 
 // Making cards: she speaks the question, then the answer, and the card saves
-// itself. Tapping the microphone again starts the next card. Tapping a side
-// selects it, so she can say it again or type it.
+// itself. Tapping the microphone again starts the next card. While she
+// speaks, tapping the answer moves on to it, and tapping the same side starts
+// it again. Otherwise tapping a side selects it, to say it again or type it.
 
 type SideName = "front" | "back";
 
@@ -82,6 +84,7 @@ const prompt = computed(() => {
   if (notice.value) return notice.value;
   if (editing && active.value === null) return "Tap the question or the answer to change it.";
   if (active.value === null) return "Saved! Tap the microphone for the next card.";
+  if (recordingSide.value === "front") return "Say the question, then tap the answer box.";
   return active.value === "front" ? "Say the question." : "Now say the answer.";
 });
 
@@ -96,8 +99,11 @@ async function pressMic() {
     if (editing) return;
     startNewCard();
   }
-  const side = active.value!;
   notice.value = null;
+  await record(active.value!);
+}
+
+async function record(side: SideName) {
   recordingSide.value = side;
   if (!(await startDictation(modelOf(side)))) recordingSide.value = null;
 }
@@ -190,7 +196,25 @@ function startNewCard() {
   active.value = "front";
 }
 
-function selectSide(side: SideName) {
+/**
+ * Tapping a side. While she speaks, tapping the same side starts it again,
+ * and tapping the other side keeps what she said and listens for the other.
+ * Otherwise it selects the side, so she can say it again or type it.
+ */
+async function tapSide(side: SideName) {
+  if (typing.value) return;
+  if (dictation.state === "recording" && recordingSide.value) {
+    notice.value = null;
+    if (side === recordingSide.value) {
+      if (!(await restartDictation(modelOf(side)))) recordingSide.value = null;
+      return;
+    }
+    await finishRecording();
+    if (notice.value) return; // Nothing was heard, so stay on this side.
+    active.value = side;
+    await record(side);
+    return;
+  }
   if (dictation.state !== "idle") return;
   notice.value = null;
   active.value = side;
@@ -232,7 +256,7 @@ useSpaceToTalk(pressMic);
       class="side"
       :class="{ active: active === side, recording: recordingSide === side }"
       role="button"
-      @click="selectSide(side)"
+      @click="tapSide(side)"
     >
       <div class="side-head">
         <span class="side-label">{{ side === "front" ? "Question" : "Answer" }}</span>

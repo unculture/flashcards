@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import BoxBar from "../components/BoxBar.vue";
 import Icon from "../components/Icon.vue";
 import LiveText from "../components/LiveText.vue";
@@ -8,6 +8,7 @@ import ModelBanner from "../components/ModelBanner.vue";
 import SpeakButton from "../components/SpeakButton.vue";
 import { type Mark, markAnswer, sameAnswer } from "../ai";
 import { findDeck, markCard, modelFor, pickSession } from "../library";
+import { playNotYet, playRight } from "../sounds";
 import { stopSpeaking } from "../voice";
 import { go, useSpaceToTalk } from "../router";
 import {
@@ -22,8 +23,14 @@ import type { Card } from "../types";
 
 // Practice with no timers and no scores. She can say her answer, or just
 // look. "Not yet" sends a card back to box 1 without any fuss.
+//
+// While she speaks, if what she has said so far matches the answer, the
+// microphone stops by itself after a short pause. A mismatch never stops it:
+// she finishes with the microphone, and the AI marks it as before.
 
 const SESSION_SIZE = 10;
+/** How long a matching answer must stay unchanged before the microphone stops. */
+const MATCH_PAUSE_MS = 900;
 
 const props = defineProps<{ deckId: string }>();
 const deck = computed(() => findDeck(props.deckId));
@@ -40,6 +47,9 @@ const checking = ref(false);
 const suggested = computed(() =>
   aiMark.value ? (aiMark.value.verdict === "right" ? "gotit" : "notyet") : null,
 );
+/** True once a sound has played for this card, so it plays only once. */
+let soundPlayed = false;
+let matchTimer: number | undefined;
 const movedUp = ref(0);
 const practised = ref(0);
 /** True when no cards were due, before she chooses to practise anyway. */
@@ -63,6 +73,7 @@ function showCard() {
   spoken.value = "";
   aiMark.value = null;
   checking.value = false;
+  soundPlayed = false;
 }
 
 onMounted(() => {
@@ -70,6 +81,7 @@ onMounted(() => {
   startSession(false);
 });
 onBeforeUnmount(() => {
+  window.clearTimeout(matchTimer);
   cancelDictation();
   stopSpeaking();
 });
@@ -77,14 +89,52 @@ onBeforeUnmount(() => {
 async function pressMic() {
   if (!card.value || revealed.value) return;
   if (dictation.state === "recording") {
-    spoken.value = await stopDictation();
-    recording.value = false;
-    reveal();
-    if (spoken.value) check(card.value, spoken.value);
+    await finishAnswer(false);
   } else if (dictation.state === "idle") {
     recording.value = await startDictation(answerModel.value);
   }
 }
+
+/**
+ * Stops listening and shows the answer. `matched` means the live transcript
+ * already matched the answer, so it is right even if the final pass differs.
+ */
+async function finishAnswer(matched: boolean) {
+  window.clearTimeout(matchTimer);
+  if (dictation.state !== "recording" || !card.value) return;
+  const target = card.value;
+  const heard = dictation.partial;
+  const final = await stopDictation();
+  recording.value = false;
+  spoken.value = matched ? final || heard : final;
+  reveal();
+  if (matched) aiMark.value = { verdict: "right", feedback: "Yes, that's it!" };
+  else if (spoken.value) check(target, spoken.value);
+}
+
+// Stop by itself once what she has said matches the answer and she pauses.
+// Each new partial restarts the wait, so she is never cut off mid-sentence.
+watch(
+  () => dictation.partial,
+  (text) => {
+    window.clearTimeout(matchTimer);
+    if (!recording.value || dictation.state !== "recording" || !card.value) return;
+    if (sameAnswer(card.value.back.text, text)) {
+      matchTimer = window.setTimeout(() => finishAnswer(true), MATCH_PAUSE_MS);
+    }
+  },
+);
+
+function playMark(right: boolean) {
+  if (soundPlayed) return;
+  soundPlayed = true;
+  if (right) playRight();
+  else playNotYet();
+}
+
+watch(aiMark, (m) => {
+  if (m) playMark(m.verdict === "right");
+});
 
 function reveal() {
   if (recording.value) {
@@ -115,6 +165,7 @@ async function check(target: Card, said: string) {
 }
 
 function mark(gotIt: boolean) {
+  playMark(gotIt);
   const before = card.value!.box;
   markCard(card.value!, gotIt);
   if (card.value!.box > before) movedUp.value++;
@@ -124,6 +175,11 @@ function mark(gotIt: boolean) {
 
 function next() {
   stopSpeaking();
+  window.clearTimeout(matchTimer);
+  if (recording.value) {
+    cancelDictation();
+    recording.value = false;
+  }
   index.value++;
   showCard();
 }

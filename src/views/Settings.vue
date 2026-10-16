@@ -6,6 +6,7 @@ import { openDecks, saveDecks } from "../exchange";
 import { library } from "../library";
 import { VOICES, VOICE_MODELS, speak, voice } from "../voice";
 import { go } from "../router";
+import { playNotYet, playRight } from "../sounds";
 import { ensureModel, models } from "../speech";
 import type { ModelId } from "../types";
 
@@ -154,6 +155,18 @@ async function submitKey() {
           <strong>{{ m.title }}</strong> <span class="hint">· {{ m.detail }}</span>
         </span>
       </label>
+    </div>
+
+    <div class="panel">
+      <h2>Sounds</h2>
+      <label class="toggle">
+        <input v-model="library.settings.sounds" type="checkbox" />
+        <span>Play a sound when I practise</span>
+      </label>
+      <div class="row">
+        <button type="button" class="button" @click="playRight(true)">Hear “Got it”</button>
+        <button type="button" class="button" @click="playNotYet(true)">Hear “Not yet”</button>
+      </div>
     </div>
 
     <div class="panel">

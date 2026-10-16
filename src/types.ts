@@ -43,6 +43,8 @@ export interface Settings {
   /** The OpenRouter audio model and its voice. */
   voiceModel: string;
   voice: string;
+  /** Play a chime for "Got it" and a soft sound for "Not yet" in practice. */
+  sounds: boolean;
 }
 
 /**

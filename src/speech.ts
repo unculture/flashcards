@@ -121,6 +121,18 @@ export async function stopDictation(): Promise<string> {
   }
 }
 
+/**
+ * Throws away the current recording and starts listening again. The back end
+ * ends the old recording when the new one starts, so this sends no cancel,
+ * which could otherwise arrive after the start and end the new recording.
+ */
+export async function restartDictation(model: ModelId): Promise<boolean> {
+  sessionId = null;
+  dictation.state = "idle";
+  dictation.partial = "";
+  return startDictation(model);
+}
+
 export function cancelDictation() {
   sessionId = null;
   dictation.state = "idle";
