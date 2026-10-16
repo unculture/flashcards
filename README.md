@@ -100,3 +100,7 @@ cargo build --release
 ```
 
 The model folders come from the [sherpa-onnx asr-models release](https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models).
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
