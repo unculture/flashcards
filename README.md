@@ -1,5 +1,7 @@
 # Flashcards
 
+**Website and downloads: https://unculture.github.io/flashcards/**
+
 Flashcards is a desktop app for making and practising flashcards by voice. It is for a dyslexic student, so she never has to type or spell. She taps the microphone, says the question, then says the answer, and the card saves itself. Speech turns into text on the computer, with the NVIDIA Parakeet model through [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). No audio leaves the computer.
 
 The plan and the progress are in [PLAN.md](PLAN.md).
@@ -90,6 +92,8 @@ OPENROUTER_API_KEY=... cargo test --lib live_openrouter -- --ignored --nocapture
 ```
 
 The app icon's source and build steps are in [design/](design/README.md).
+
+The website is in `site/`. Pushing a change to it publishes it to the `gh-pages` branch, which GitHub Pages serves at https://unculture.github.io/flashcards/.
 
 To measure transcription speed with a model folder and a 16 kHz WAV file:
 

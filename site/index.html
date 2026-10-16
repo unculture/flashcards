@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flashcards: make flashcards by talking</title>
+  <meta name="description" content="A free desktop app for making and practising flashcards by voice. Built for dyslexic students, so nobody has to type or spell.">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f7f3ea;
+      --surface: #fffdf7;
+      --text: #22282f;
+      --muted: #5d6670;
+      --line: #e4ddcd;
+      --accent: #2c5c8f;
+      --accent-dark: #22497a;
+      --accent-wash: #e3ecf5;
+      --sun: #f7b733;
+      --radius: 18px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #171b21;
+        --surface: #20262e;
+        --text: #eef1f4;
+        --muted: #a9b2bc;
+        --line: #333b45;
+        --accent: #8fb6e0;
+        --accent-dark: #b9d2ec;
+        --accent-wash: #233246;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Lexend", "Segoe UI", system-ui, sans-serif;
+      font-size: 19px;
+      line-height: 1.55;
+      letter-spacing: 0.01em;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+
+    header.hero {
+      padding: 64px 0 56px;
+      text-align: center;
+    }
+    .hero img { width: 168px; height: 168px; }
+    h1 {
+      font-size: clamp(2.2rem, 6vw, 3.4rem);
+      line-height: 1.1;
+      margin: 12px 0 14px;
+      font-weight: 700;
+    }
+    .lead {
+      font-size: 1.25rem;
+      color: var(--muted);
+      max-width: 640px;
+      margin: 0 auto 32px;
+    }
+    .downloads {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 26px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 1.05rem;
+      text-decoration: none;
+      background: var(--accent);
+      color: #fff;
+      border: 2px solid var(--accent);
+    }
+    @media (prefers-color-scheme: dark) {
+      .button { color: #11161c; }
+    }
+    .button.secondary {
+      background: transparent;
+      color: var(--accent);
+    }
+    .button svg { width: 22px; height: 22px; flex: none; }
+    .version {
+      margin-top: 14px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    section { padding: 40px 0; }
+    h2 {
+      font-size: 1.8rem;
+      margin: 0 0 24px;
+      text-align: center;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .feature {
+      background: var(--surface);
+      border: 2px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+    }
+    .feature h3 {
+      margin: 0 0 6px;
+      font-size: 1.15rem;
+    }
+    .feature p { margin: 0; color: var(--muted); }
+    .emoji { font-size: 1.6rem; display: block; margin-bottom: 8px; }
+
+    .steps {
+      list-style: none;
+      padding: 0;
+      margin: 0 auto;
+      max-width: 640px;
+      counter-reset: step;
+    }
+    .steps li {
+      counter-increment: step;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+    .steps li::before {
+      content: counter(step);
+      flex: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent-wash);
+      color: var(--accent);
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+    }
+
+    .install {
+      background: var(--surface);
+      border: 2px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    .install h3 { margin: 18px 0 6px; font-size: 1.1rem; }
+    .install h3:first-child { margin-top: 0; }
+    .install p { margin: 0 0 8px; color: var(--muted); }
+
+    footer {
+      padding: 40px 0 56px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <img src="icon.png" alt="" width="168" height="168">
+      <h1>Make flashcards by talking</h1>
+      <p class="lead">
+        Flashcards is a free app for revising. Say the question, say the answer, and the card makes itself.
+        It was built for a dyslexic student, so nobody has to type or spell.
+      </p>
+      <div class="downloads">
+        <a id="windows" class="button" href="https://github.com/unculture/flashcards/releases/latest">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3zM11.5 4.3 21 3v8.5h-9.5zM3 12.5h7.5v7.1L3 18.5zM11.5 12.5H21V21l-9.5-1.3z"/></svg>
+          Download for Windows
+        </a>
+        <a id="mac" class="button secondary" href="https://github.com/unculture/flashcards/releases/latest">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.1-1.2 2.9-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.4-1-2.4-3.9zM14 5.5c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1 .1 2.1-.6 2.8-1.4z"/></svg>
+          Download for Mac
+        </a>
+      </div>
+      <p class="version" id="version">Free and open source. Windows 10 and 11, and Macs with Apple silicon.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section>
+      <h2>Why it helps</h2>
+      <div class="features">
+        <div class="feature">
+          <span class="emoji" aria-hidden="true">🎙️</span>
+          <h3>Speak, don't spell</h3>
+          <p>Tap the microphone and talk. Your words appear as you say them, so you can see it's working.</p>
+        </div>
+        <div class="feature">
+          <span class="emoji" aria-hidden="true">🔒</span>
+          <h3>Private by design</h3>
+          <p>Speech turns into text on your own computer. Your voice is never recorded or sent anywhere.</p>
+        </div>
+        <div class="feature">
+          <span class="emoji" aria-hidden="true">🌱</span>
+          <h3>Calm practice</h3>
+          <p>No timers and no scores. Cards you know come up less often, and tricky ones come back sooner.</p>
+        </div>
+        <div class="feature">
+          <span class="emoji" aria-hidden="true">✨</span>
+          <h3>Tidy cards, kind marking</h3>
+          <p>Optional AI help removes the “ums”, fixes misheard words and checks spoken answers gently. It never changes facts.</p>
+        </div>
+        <div class="feature">
+          <span class="emoji" aria-hidden="true">🔊</span>
+          <h3>Listen instead of reading</h3>
+          <p>Tap the speaker on any card to hear it read aloud by a natural-sounding voice.</p>
+        </div>
+        <div class="feature">
+          <span class="emoji" aria-hidden="true">🖨️</span>
+          <h3>Print real cards</h3>
+          <p>Print fold-over cards or double-sided cards on A4, ready to cut out and carry around.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><span>Make a deck for a subject, such as Science or French, by saying its name.</span></li>
+        <li><span>Say a question, then say its answer. The card saves itself, and you're ready for the next one.</span></li>
+        <li><span>Practise ten cards at a time. Say your answer, or tap to see it, then choose “Got it” or “Not yet”.</span></li>
+      </ol>
+    </section>
+
+    <section id="install">
+      <h2>Installing</h2>
+      <div class="install">
+        <h3>Windows</h3>
+        <p>Run the installer. Windows may say it protected your PC, because the app isn't signed yet. Choose <strong>More info</strong>, then <strong>Run anyway</strong>.</p>
+        <h3>Mac</h3>
+        <p>Open the download and drag Flashcards to Applications. The first time, open <strong>System Settings › Privacy &amp; Security</strong> and choose <strong>Open Anyway</strong>.</p>
+        <h3>First launch</h3>
+        <p>The app downloads its speech-to-text model once, about 500 MB. After that, dictation works offline.</p>
+        <h3>AI help (optional)</h3>
+        <p>Tidying, marking and read-aloud use <a href="https://openrouter.ai">OpenRouter</a> with your own key, added in Settings. They cost a fraction of a penny per card. Without a key, everything else still works.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>Made at home for a dyslexic student. MIT licensed. <a href="https://github.com/unculture/flashcards">Source code on GitHub</a>.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Point the buttons at the newest installers. Without the API, they open the releases page.
+    fetch("https://api.github.com/repos/unculture/flashcards/releases/latest")
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((release) => {
+        for (const asset of release.assets || []) {
+          if (asset.name.endsWith(".exe")) document.getElementById("windows").href = asset.browser_download_url;
+          if (asset.name.endsWith(".dmg")) document.getElementById("mac").href = asset.browser_download_url;
+        }
+        document.getElementById("version").textContent =
+          `Version ${release.tag_name.replace(/^v/, "")}. Free and open source. Windows 10 and 11, and Macs with Apple silicon.`;
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>
