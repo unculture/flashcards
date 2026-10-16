@@ -7,8 +7,7 @@ import ModelBanner from "../components/ModelBanner.vue";
 import SpeakButton from "../components/SpeakButton.vue";
 import TypeDialog from "../components/TypeDialog.vue";
 import { cleanupText } from "../ai";
-import { addCard, findDeck, library, modelFor } from "../library";
-import { speak } from "../voice";
+import { addCard, findDeck, modelFor } from "../library";
 import { go, useSpaceToTalk } from "../router";
 import {
   cancelDictation,
@@ -113,7 +112,6 @@ async function finishRecording() {
     return;
   }
   setSide(side, { text, heard: text });
-  if (library.settings.readBack) speak(text, langOf(side));
   tidyUp(side, text);
 }
 

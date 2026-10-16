@@ -8,14 +8,15 @@ import type { Card } from "../types";
 // Two A4 layouts:
 // - "fold": one side of the paper. Each strip has the question on the left
 //   and the answer on the right. Cut along the dashed lines, then fold along
-//   the dotted middle line. 5 cards per sheet, each 99 × 56.8 mm.
-// - "duplex": both sides of the paper. 8 cards per sheet, each 99 × 71 mm.
+//   the dotted middle line. 5 cards per sheet, each 93 × 53 mm.
+// - "duplex": both sides of the paper. 8 cards per sheet, each 93 × 66 mm.
 //   The answer pages swap the columns, so each answer prints behind its
 //   question when the printer flips on the long edge.
 //
-// Each sheet is smaller than A4 and centred, because printers cannot print
-// the outer 4 or 5 mm of the paper. A sheet of exactly 297 mm spills onto a
-// second, blank page. Centring keeps the two sides of a duplex sheet lined up.
+// Each sheet is well inside A4 and centred. Printers cannot print the outer
+// few millimetres, and the macOS print path fits pages to that printable
+// area, so a 284 mm sheet still spilled onto a blank page. Centring keeps the
+// two sides of a duplex sheet lined up.
 
 type Layout = "fold" | "duplex";
 
@@ -168,8 +169,8 @@ const sheetCount = computed(() => sheets.value.length * (layout.value === "duple
   zoom: 0.5;
 }
 .sheet {
-  width: 198mm;
-  height: 284mm;
+  width: 186mm;
+  height: 266mm;
   background: white;
   color: black;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);

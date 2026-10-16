@@ -7,8 +7,8 @@ import MicButton from "../components/MicButton.vue";
 import ModelBanner from "../components/ModelBanner.vue";
 import SpeakButton from "../components/SpeakButton.vue";
 import { type Mark, markAnswer, sameAnswer } from "../ai";
-import { findDeck, library, markCard, modelFor, pickSession } from "../library";
-import { speak, stopSpeaking } from "../voice";
+import { findDeck, markCard, modelFor, pickSession } from "../library";
+import { stopSpeaking } from "../voice";
 import { go, useSpaceToTalk } from "../router";
 import {
   cancelDictation,
@@ -63,7 +63,6 @@ function showCard() {
   spoken.value = "";
   aiMark.value = null;
   checking.value = false;
-  if (card.value && library.settings.readBack) speak(card.value.front.text, deck.value!.frontLang);
 }
 
 onMounted(() => {
@@ -93,7 +92,6 @@ function reveal() {
     recording.value = false;
   }
   revealed.value = true;
-  if (library.settings.readBack) speak(card.value!.back.text, deck.value!.backLang);
 }
 
 /** Marks her spoken answer: a quick local match first, then the AI. */

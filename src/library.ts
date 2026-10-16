@@ -10,7 +10,6 @@ export const library = reactive<Library>({
     marking: true,
     aiModel: "openai/gpt-5.6-luna",
     readAloud: true,
-    readBack: false,
     voiceModel: "openai/gpt-audio-mini",
     voice: "alloy",
   },

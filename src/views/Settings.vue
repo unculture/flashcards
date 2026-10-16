@@ -98,10 +98,6 @@ async function submitKey() {
         <input v-model="library.settings.readAloud" type="checkbox" />
         <span>Show read-aloud buttons</span>
       </label>
-      <label class="toggle">
-        <input v-model="library.settings.readBack" type="checkbox" :disabled="!library.settings.readAloud" />
-        <span>Read each card aloud automatically</span>
-      </label>
 
       <h3>Voice</h3>
       <div class="chips">

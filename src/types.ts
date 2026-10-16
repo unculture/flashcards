@@ -40,8 +40,6 @@ export interface Settings {
   aiModel: string;
   /** Show read-aloud buttons. Needs the OpenRouter key. */
   readAloud: boolean;
-  /** Read each side aloud after she speaks it, and each card as it comes up in practice. */
-  readBack: boolean;
   /** The OpenRouter audio model and its voice. */
   voiceModel: string;
   voice: string;
