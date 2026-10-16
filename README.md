@@ -4,13 +4,19 @@ Flashcards is a desktop app for making and practising flashcards by voice. It is
 
 The plan and the progress are in [PLAN.md](PLAN.md).
 
-## Install on Windows
+## Install
 
-1. Open the [Windows installer workflow](https://github.com/unculture/flashcards/actions/workflows/windows.yml) and click the newest run that has a green tick. You must be signed in to GitHub.
-2. Under Artifacts, download **Flashcards-Windows-installer**. It is a zip file.
-3. Open the zip file and run `Flashcards_0.1.0_x64-setup.exe`.
-4. Windows shows "Windows protected your PC", because the installer is not signed. Click **More info**, then **Run anyway**.
-5. Open Flashcards. On the first launch, it downloads the English voice, about 500 MB. Dictation works when the download finishes.
+Download the newest installer from the [releases page](https://github.com/unculture/flashcards/releases/latest). No GitHub account is needed.
+
+On Windows:
+
+1. Download `Flashcards_<version>_x64-setup.exe` and run it.
+2. Windows shows "Windows protected your PC", because the installer is not signed. Click **More info**, then **Run anyway**.
+3. Open Flashcards. On the first launch, it downloads English speech-to-text, about 500 MB. Dictation works when the download finishes.
+
+On a Mac with Apple silicon, download the `.dmg`, open it, and drag Flashcards to Applications. The app is not notarised, so the first time, open **System Settings › Privacy & Security** and click **Open Anyway**.
+
+Each push to `main` also builds a Windows installer for testing. It is under Artifacts in the newest run of the [Windows installer workflow](https://github.com/unculture/flashcards/actions/workflows/windows.yml), which needs a GitHub login.
 
 If the microphone does not work, open Settings > Privacy & security > Microphone, and turn on "Let desktop apps access your microphone". When microphone access is off, Windows gives the app silence, and Flashcards shows a message about it.
 
@@ -19,6 +25,7 @@ If the microphone does not work, open Settings > Privacy & security > Microphone
 - **New deck**: tap New deck, say the name, and choose the language of the answers. A French deck downloads the multilingual voice, also about 500 MB.
 - **Make cards**: tap the microphone and say the question. Tap it again to stop. Then do the same for the answer. The card saves itself, and the next tap starts the next card. To say a side again, tap that side and then the microphone. To type instead, tap Type.
 - **Practise**: each session has up to 10 cards. She says her answer or taps Show answer, then taps Got it or Not yet. Got it moves the card up a box, and Not yet moves it back to box 1. Cards in higher boxes come up less often. There are no timers and no scores.
+- **Save and share decks**: on a deck's page, Save to a file writes a `.flashcards` file. On the home screen, Open a deck file adds the decks from a file. Settings › Backup saves every deck, with her progress, in one file. A deck that is already in the app comes in as a copy, so opening a file never overwrites anything.
 - **Space bar**: when a keyboard is attached, the space bar works like the microphone button. Press it to start and again to stop, or hold it down while you talk.
 
 ## AI help
@@ -33,7 +40,7 @@ To set it up:
 1. Create a separate key for this app at [openrouter.ai/keys](https://openrouter.ai/keys), with a low monthly spend limit, because the key is stored on her laptop.
 2. In Flashcards, open Settings, paste the key under AI help, and click Save. The app checks the key, then stores it in Windows Credential Manager (on a Mac, in the keychain). The key is not in `library.json`.
 
-- read cards aloud with an OpenRouter audio model (GPT Audio Mini by default). Speaker buttons show on cards when a key is saved. In Settings, under Read aloud, you can choose the voice, try it, and turn on automatic reading. Each card's audio is fetched once and then kept in the app's cache folder, so reading a card again costs nothing.
+- read cards aloud with an OpenRouter audio model (GPT Audio Mini by default). Speaker buttons show on cards when a key is saved. A card is read only when she taps its speaker button. In Settings, under Read aloud, you can choose the voice and try it. Each card's audio is fetched once and then kept in the app's cache folder, so reading a card again costs nothing.
 
 The app sends the card text to OpenRouter, never the recorded audio. Without a key or without an internet connection, everything else still works, and she marks her own answers.
 
@@ -72,6 +79,17 @@ open -n -W --stdout /dev/stdout /Applications/Flashcards.app --args --mic-test
 ```
 
 The first build downloads the prebuilt sherpa-onnx libraries. Pushes to `main` build the Windows installer with GitHub Actions.
+
+To publish a release, run `scripts/release.sh 0.2.0` with a clean working tree. It sets the version, commits, tags `v0.2.0`, and pushes. GitHub Actions then builds the Windows and Mac installers and publishes them on the releases page.
+
+To try the AI help against the real OpenRouter (it costs a little credit):
+
+```sh
+cd src-tauri
+OPENROUTER_API_KEY=... cargo test --lib live_openrouter -- --ignored --nocapture
+```
+
+The app icon's source and build steps are in [design/](design/README.md).
 
 To measure transcription speed with a model folder and a 16 kHz WAV file:
 

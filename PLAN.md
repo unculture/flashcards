@@ -156,7 +156,9 @@ The system voices sounded too poor, so read-aloud uses an OpenRouter audio model
 - OpenRouter sends audio output only as a stream. The app asks for 16-bit PCM at 24 kHz and wraps it in a WAV header.
 - Each result is cached on disk, keyed by model, voice, language, and text.
 
-Settings: show the buttons (on by default), read automatically (off by default), the voice (10 OpenAI voices, with "Try this voice"), and the model.
+Cards are read only when she taps a speaker button. Automatic reading was removed on 16 October, because she did not want voices to play on their own.
+
+Settings: show the buttons (on by default), the voice (10 OpenAI voices, with "Try this voice"), and the model.
 
 ## Design for dyslexia
 
@@ -169,7 +171,7 @@ Settings: show the buttons (on by default), read automatically (off by default),
 
 - Store the data on the laptop, in the app data folder.
 - Every deck and card has a stable ID from the start, so that sync is possible later.
-- Export and import a deck as a simple JSON file. This file is the exchange format for a future iPhone version. Design it now. Moving decks between devices can come later.
+- Export and import decks as a JSON file with the `.flashcards` extension: `{"format": "flashcards-decks", "version": 1, "exportedAt", "decks": [Deck]}`, with the `Deck` type from `src/types.ts`, progress included. This file is the exchange format for a future iPhone version, so change it only by adding fields. Import also accepts `library.json`. A deck whose ID is already in the library comes in as a copy with new IDs, and a name that is taken gets " (2)". The code is in `src/exchange.ts`.
 - Each card keeps its raw transcript and its cleaned text.
 
 ## Order of work
@@ -214,15 +216,25 @@ AI help, added later the same evening:
 - The model is a setting, with Patter's three presets. The default is GPT-5.6 Luna.
 - Tested only against a local mock server (`cargo test`), not yet against OpenRouter itself.
 
+On 16 October:
+
+- The Mac app works, including the microphone (it needed the audio-input entitlement) and the OpenRouter voices.
+- Read-aloud plays only when a speaker button is tapped.
+- Double-sided printing no longer adds a blank page (the sheet is now 186 × 266 mm).
+- Cleanup and marking were tried against OpenRouter with a real key (the ignored `live_openrouter` test), and the results were good. For example, "1065 no 1066" became "1066", "Jew Peter" was marked right for Jupiter, and "la chienne" for "le chien" was marked nearly. A new account is limited to 20 requests a minute.
+- Both speech models stay in memory, so a French deck no longer reloads a model when she switches sides.
+- Decks can be saved to a file and opened from one, and Settings can back up every deck.
+- An app icon: two flashcards with a speech bubble (`design/`).
+- Tagged releases build the Windows and Mac installers and publish them on GitHub releases (`scripts/release.sh`).
+
 ### Next steps
 
-1. Test on her laptop, and fix what the test shows. Test the AI help with a real key.
-2. Export and import of a deck as a file (the exchange format is the `Library` type in `src/types.ts`).
-3. A printer alignment test page, an app icon, and installers as GitHub releases.
+1. Test on her laptop: the microphone, the touch keyboard in tablet mode, speed on her i5, and French.
+2. Stable Mac signing with a self-signed certificate, so the microphone and keychain permissions survive rebuilds. This changes the keychain, so do it with the user present.
+3. A printer alignment test page.
 
 ## Later
 
-- A Mac version.
 - An iPhone app, using the deck file.
 - She helps with the design, and the project becomes a learning experience for her.
 - Pictures on cards.
