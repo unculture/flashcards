@@ -224,7 +224,8 @@ When you are not sure, keep her words.
 - Spell names, places and subject terms the standard way.
 - Fix punctuation and capital letters. A question side normally ends with a question mark.
 - You may lightly reword the text so that it reads as written text, not as speech. For \
-example, remove \"the answer is\" or \"the question is\" at the start.
+example, remove \"the answer is\", \"it's\" or \"the question is\" at the start of a \
+side, so \"it's Jupiter\" becomes \"Jupiter\".
 
 Never change these:
 - Facts: dates, numbers, names, places, terms, and what the answer says. The answer side \
@@ -626,6 +627,64 @@ mod tests {
         // The second time comes from the cache: the mock server has no requests left.
         assert_eq!(speak(&request, &cache).unwrap(), wav);
         let _ = std::fs::remove_dir_all(&cache);
+    }
+
+    /// Tries real dictations against OpenRouter and prints the results. Run it with
+    /// `OPENROUTER_API_KEY=... cargo test --lib live_openrouter -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "calls OpenRouter and costs a little credit"]
+    fn live_openrouter() {
+        let model = "openai/gpt-5.6-luna";
+        let cleanups = [
+            ("question", "en", "Science", None, "um what is the uh the largest planet in the solar system"),
+            ("answer", "en", "Science", Some("What is the largest planet?"), "it's Jew Peter"),
+            ("question", "en", "History", None, "when was the battle of hastings"),
+            ("answer", "en", "History", Some("When was the Battle of Hastings?"), "1065 no 1066"),
+            ("answer", "en", "History", Some("Who won the Battle of Hastings?"), "the answer is William the conqueror"),
+            ("question", "en", "French", None, "how do you say the dog"),
+            ("answer", "fr", "French", Some("How do you say the dog?"), "le chien"),
+            ("answer", "fr", "French", Some("How do you say I like swimming?"), "j'aime nager"),
+            ("question", "en", "Science", None, "what is photosynthesis"),
+            ("answer", "en", "Science", Some("What is photosynthesis?"), "it's like when plants use um sunlight to make their food from carbon dioxide and water"),
+            ("question", "en", "Maths", None, "what is seven times eight"),
+            ("answer", "en", "Maths", Some("What is seven times eight?"), "fifty four"),
+        ];
+        for (side, lang, deck, question, text) in cleanups {
+            let out = cleanup(&CleanupRequest {
+                text: text.into(),
+                side: side.into(),
+                lang: lang.into(),
+                deck_name: deck.into(),
+                question: question.map(Into::into),
+                model: model.into(),
+            });
+            println!("CLEAN {side:8} {text:?}\n   -> {out:?}");
+        }
+        let marks = [
+            ("What is the largest planet?", "Jupiter", "en", "Science", "jupiter"),
+            ("What is the largest planet?", "Jupiter", "en", "Science", "Jew Peter"),
+            ("What is the largest planet?", "Jupiter", "en", "Science", "Saturn"),
+            ("When was the Battle of Hastings?", "1066", "en", "History", "ten sixty six"),
+            ("When was the Battle of Hastings?", "1066", "en", "History", "1067"),
+            ("How do you say the dog?", "le chien", "fr", "French", "le chien"),
+            ("How do you say the dog?", "le chien", "fr", "French", "la chienne"),
+            ("What is photosynthesis?", "Plants use sunlight to make food from carbon dioxide and water.", "en", "Science", "plants make food from sunlight"),
+            ("What is photosynthesis?", "Plants use sunlight to make food from carbon dioxide and water.", "en", "Science", "I don't know"),
+        ];
+        for (question, answer, lang, deck, spoken) in marks {
+            let out = mark(&MarkRequest {
+                question: question.into(),
+                answer: answer.into(),
+                spoken: spoken.into(),
+                lang: lang.into(),
+                deck_name: deck.into(),
+                model: model.into(),
+            });
+            match out {
+                Ok(m) => println!("MARK {answer:?} said {spoken:?}\n   -> {} | {}", m.verdict, m.feedback),
+                Err(e) => println!("MARK {answer:?} said {spoken:?}\n   -> ERROR {e}"),
+            }
+        }
     }
 
     #[test]
