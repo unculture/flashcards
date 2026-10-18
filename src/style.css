@@ -38,9 +38,12 @@
  * Feel like an app, not a web page: nothing scrolls sideways, and the page
  * doesn't bounce or stretch at its edges on a touchpad or touchscreen. Up and
  * down scrolling still works.
+ *
+ * On html only, which passes them to the window itself. On body as well,
+ * body becomes a scroll box of its own with nothing to scroll, and touchpad
+ * scrolling stops there instead of moving the page.
  */
-html,
-body {
+html {
   overflow-x: hidden;
   overscroll-behavior: none;
 }
