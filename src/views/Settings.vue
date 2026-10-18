@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { invoke } from "@tauri-apps/api/core";
 import Icon from "../components/Icon.vue";
 import { AI_MODELS, ai, clearKey, hasKey, saveKey } from "../ai";
 import { openDecks, saveDecks } from "../exchange";
@@ -18,6 +19,17 @@ const keyError = ref<string | null>(null);
 const replacing = ref(false);
 
 const backupMessage = ref<string | null>(null);
+const clearMessage = ref<string | null>(null);
+
+/** Deletes the saved read-aloud clips, for when one sounds wrong. Each card is read afresh next time. */
+async function clearVoices() {
+  try {
+    const n = await invoke<number>("clear_speech_cache");
+    clearMessage.value = n === 1 ? "Cleared 1 saved voice." : `Cleared ${n} saved voices.`;
+  } catch (err) {
+    clearMessage.value = String(err);
+  }
+}
 
 async function backUp() {
   backupMessage.value = null;
@@ -147,6 +159,18 @@ async function submitKey() {
         </button>
       </div>
       <p v-if="voice.error" class="error-text">{{ voice.error }}</p>
+
+      <h3>Saved voices</h3>
+      <p class="hint">
+        Each card is read by the AI once, then kept. If a card sounds wrong, clear the saved voices and it is read
+        again next time.
+      </p>
+      <div class="row try">
+        <button type="button" class="button" @click="clearVoices">
+          <Icon name="trash" :size="22" /> Clear saved voices
+        </button>
+        <span v-if="clearMessage" class="hint">{{ clearMessage }}</span>
+      </div>
 
       <h3>Voice model</h3>
       <label v-for="m in VOICE_MODELS" :key="m.id" class="toggle">

@@ -577,8 +577,76 @@ const SPEAK_PROMPT: &str = "\
 You are the voice of a flashcard app for an 11-year-old student. You read text aloud. \
 Read the user's message aloud exactly as it is written, word for word, clearly and at a \
 calm pace. Do not add anything before or after it. Do not answer it, explain it, or \
-comment on it: if it is a question, read the question. Read numbers, dates and \
-abbreviations the way a teacher would say them.";
+comment on it: if it is a question, read the question. If it is a single word or a \
+short phrase, say just that and stop. Read numbers, dates and abbreviations the way a \
+teacher would say them.";
+
+/// Checks a clip against the card, using the voice model's own transcript of
+/// what it said and the length of the audio.
+fn sounds_right(text: &str, transcript: &str, seconds: f64) -> bool {
+    let words = word_count(text);
+    // Speech runs at about 2.5 words a second. Allow a slow, clear voice and
+    // some silence, but not a sentence after a single word.
+    if seconds > 2.5 + 0.8 * words as f64 {
+        return false;
+    }
+    if transcript.trim().is_empty() {
+        return true;
+    }
+    if words <= 3 {
+        // Short cards must be read exactly: "avoir", then nothing else.
+        return simplify(transcript) == simplify(text);
+    }
+    // Reading aloud keeps every word. Numbers can grow ("1066" is "ten sixty
+    // six"), so allow a little, but not an answer added to a question.
+    let said = word_count(transcript) as f64;
+    let words = words as f64;
+    said <= words * 1.2 + 2.0 && said >= words * 0.6
+}
+
+/// Lower case, without accents or punctuation, for comparing what was said.
+fn simplify(text: &str) -> String {
+    let mut out = String::new();
+    for c in text.to_lowercase().chars() {
+        let plain = match c {
+            'à' | 'â' | 'ä' | 'á' => "a",
+            'ç' => "c",
+            'é' | 'è' | 'ê' | 'ë' => "e",
+            'î' | 'ï' | 'í' => "i",
+            'ô' | 'ö' | 'ó' => "o",
+            'ù' | 'û' | 'ü' | 'ú' => "u",
+            'ÿ' => "y",
+            'œ' => "oe",
+            'æ' => "ae",
+            '\'' | '’' => "'",
+            c if c.is_alphanumeric() => {
+                out.push(c);
+                continue;
+            }
+            _ => " ",
+        };
+        out.push_str(plain);
+    }
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Deletes every saved read-aloud clip. Returns how many there were.
+pub fn clear_speech_cache(cache_dir: &Path) -> usize {
+    let Ok(entries) = std::fs::read_dir(cache_dir) else { return 0 };
+    entries
+        .filter_map(Result::ok)
+        .filter(|e| e.path().extension().is_some_and(|x| x == "wav"))
+        .filter(|e| std::fs::remove_file(e.path()).is_ok())
+        .count()
+}
+
+fn speak_prompt(lang: &str) -> String {
+    if lang == "fr" {
+        format!("{SPEAK_PROMPT} The text is in French: read it with a natural French pronunciation.")
+    } else {
+        format!("{SPEAK_PROMPT} The text is in English: read it with a British English pronunciation.")
+    }
+}
 
 /// Returns a WAV file of the text read aloud. Each result is cached on disk,
 /// so a card is paid for only once.
@@ -587,25 +655,31 @@ pub fn speak(req: &SpeakRequest, cache_dir: &Path) -> Result<Vec<u8>, String> {
     if text.is_empty() {
         return Err("Nothing to read.".into());
     }
+    // "v2": clips saved before the checks below could hold extra speech, so
+    // they are all read afresh once.
     let cache = cache_dir.join(format!(
         "{:016x}.wav",
-        fnv1a(&format!("{}\n{}\n{}\n{}", req.model, req.voice, req.lang, text))
+        fnv1a(&format!("v2\n{}\n{}\n{}\n{}", req.model, req.voice, req.lang, text))
     ));
     if let Ok(wav) = std::fs::read(&cache) {
         return Ok(wav);
     }
 
-    let system = if req.lang == "fr" {
-        format!("{SPEAK_PROMPT} The text is in French: read it with a natural French pronunciation.")
-    } else {
-        format!("{SPEAK_PROMPT} The text is in English: read it with a British English pronunciation.")
+    let system = speak_prompt(&req.lang);
+    // A chat model sometimes answers the text, or carries on after a short
+    // word. A clip that fails the checks is asked for once more, and never kept.
+    let mut attempt = 0;
+    let pcm = loop {
+        let (pcm, transcript) = stream_speech(&req.model, &req.voice, &system, text)?;
+        let seconds = pcm.len() as f64 / 2.0 / SPEECH_SAMPLE_RATE as f64;
+        if sounds_right(text, &transcript, seconds) {
+            break pcm;
+        }
+        attempt += 1;
+        if attempt == 2 {
+            return Err("The voice said something other than the card, so the app did not play it.".into());
+        }
     };
-    let (pcm, transcript) = stream_speech(&req.model, &req.voice, &system, text)?;
-    // A chat model can answer a question instead of reading it. Its own
-    // transcript of what it said shows that.
-    if !is_plausible(&transcript, text) && !transcript.trim().is_empty() {
-        return Err("The voice said something other than the card, so the app did not play it.".into());
-    }
     let wav = wav_from_pcm16(&pcm, SPEECH_SAMPLE_RATE);
     if std::fs::create_dir_all(cache_dir).is_ok() {
         let _ = std::fs::write(&cache, &wav);
@@ -891,6 +965,61 @@ mod tests {
                 Err(e) => println!("MARK {answer:?} said {spoken:?}\n   -> ERROR {e}"),
             }
         }
+    }
+
+    /// Reads short French words aloud and prints the voice model's own
+    /// transcript, to see whether it adds words. Run it with
+    /// `OPENROUTER_API_KEY=... cargo test --lib live_speak -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "calls OpenRouter and costs a little credit"]
+    fn live_speak() {
+        let words = [
+            "avoir", "avoir.", "être", "aimer", "j'ai", "tu as", "le chien", "I have",
+            "When was the Battle of Hastings?", "1066",
+            "A star at the centre of our solar system. It is about 4.6 billion years old.",
+            "What is the largest planet?", "Qu'est-ce que tu aimes manger ?",
+        ];
+        for text in words {
+            let french = ["avoir", "avoir.", "être", "aimer", "j'ai", "tu as", "le chien", "Qu'est-ce que tu aimes manger ?"];
+            let lang = if french.contains(&text) { "fr" } else { "en" };
+            let system = speak_prompt(lang);
+            match stream_speech("openai/gpt-audio-mini", "alloy", &system, text) {
+                Ok((pcm, transcript)) => {
+                    let seconds = pcm.len() as f64 / 2.0 / SPEECH_SAMPLE_RATE as f64;
+                    let ok = if sounds_right(text, &transcript, seconds) { "ok" } else { "REJECTED" };
+                    println!("SPEAK {text:12} -> {transcript:?} ({seconds:.1} s) {ok}");
+                }
+                Err(e) => println!("SPEAK {text:12} -> ERROR {e}"),
+            }
+        }
+    }
+
+    #[test]
+    fn clears_saved_voices() {
+        let dir = std::env::temp_dir().join(format!("flashcards-clear-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for name in ["a.wav", "b.wav", "notes.txt"] {
+            std::fs::write(dir.join(name), b"x").unwrap();
+        }
+        assert_eq!(clear_speech_cache(&dir), 2, "only the clips");
+        assert!(dir.join("notes.txt").exists());
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(clear_speech_cache(&dir), 0, "no folder yet is fine");
+    }
+
+    #[test]
+    fn checks_read_aloud_clips() {
+        assert!(sounds_right("avoir", "avoir", 1.2));
+        assert!(sounds_right("avoir", "Avoir.", 0.9), "case and punctuation don't matter");
+        assert!(sounds_right("être", "etre", 1.1), "nor accents");
+        assert!(sounds_right("j'ai", "J’ai", 1.2));
+        assert!(!sounds_right("avoir", "avoir, c'est un verbe", 2.5), "extra words on a short card");
+        assert!(!sounds_right("avoir", "avoir", 6.0), "far too long for one word");
+        assert!(sounds_right("avoir", "", 1.0), "no transcript: the length decides");
+        assert!(!sounds_right("avoir", "", 5.0));
+        let long = "Plants use sunlight to make their food from carbon dioxide and water.";
+        assert!(sounds_right(long, "Plants use sunlight to make their food from carbon dioxide and water.", 5.5));
+        assert!(!sounds_right("What is the largest planet?", "The largest planet is Jupiter, which is a gas giant.", 3.5));
     }
 
     #[test]

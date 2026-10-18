@@ -228,6 +228,13 @@ async fn ai_speak(app: AppHandle, request: ai::SpeakRequest) -> Result<tauri::ip
     Ok(tauri::ipc::Response::new(wav))
 }
 
+/// Deletes the saved read-aloud clips, so every card is read afresh.
+#[tauri::command]
+fn clear_speech_cache(app: AppHandle) -> Result<usize, String> {
+    let cache = app.path().app_cache_dir().map_err(|e| e.to_string())?.join("speech");
+    Ok(ai::clear_speech_cache(&cache))
+}
+
 #[tauri::command]
 fn load_library(state: State<AppState>) -> Result<Option<Value>, String> {
     state.library.load()
@@ -396,6 +403,7 @@ pub fn run() {
             ai_mark,
             ai_generate_cards,
             ai_speak,
+            clear_speech_cache,
             save_deck_file,
             open_deck_file,
             check_for_update,
