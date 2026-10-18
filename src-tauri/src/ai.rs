@@ -198,12 +198,21 @@ pub struct CleanupRequest {
     text: String,
     /// "question" or "answer".
     side: String,
-    /// "en" or "fr".
-    lang: String,
+    /// "en" or "fr" when the side's language is fixed. None in a deck with
+    /// more than one language: the model decides.
+    lang: Option<String>,
     deck_name: String,
-    /// When cleaning an answer: the card's question, which helps with misheard words.
-    question: Option<String>,
+    /// The other side of the card, if it has text yet. It helps with misheard
+    /// words and, in a mixed deck, with the language.
+    other: Option<String>,
     model: String,
+}
+
+#[derive(Serialize)]
+pub struct Cleaned {
+    text: String,
+    /// The side's language, when the model decided it.
+    lang: Option<String>,
 }
 
 const CLEANUP_PROMPT: &str = "\
@@ -232,36 +241,70 @@ Never change these:
 is what she learns, so a changed fact teaches her the wrong thing. If she says something \
 that is factually wrong, keep it.
 - The language. Never translate. French stays French and English stays English.
-- Questions. If the side is a question, output the question, cleaned up. Do not answer it.
+- Questions. If the side is a question, output the question, cleaned up. Do not answer it.";
 
+const CLEANUP_OUTPUT_TEXT: &str = "\
 Output only the edited text: no introduction, no explanation, no quotation marks and no \
 Markdown. If the transcript needs no changes, output it unchanged.";
 
-pub fn cleanup(req: &CleanupRequest) -> Result<String, String> {
+const CLEANUP_OUTPUT_JSON: &str = "\
+This deck mixes English and French: either side of a card can be in either language. \
+Decide which language she spoke. A short French phrase can come out of the recognizer as \
+English-looking words or stray letters (\"A voir\" for \"avoir\"), so use the deck subject \
+and the other side of the card too. Never translate.
+
+Reply with JSON only, in this form: {\"lang\": \"fr\", \"text\": \"...\"}, where lang is \
+\"en\" or \"fr\" and text is the edited text. If the transcript needs no changes, the text \
+is the transcript unchanged.";
+
+pub fn cleanup(req: &CleanupRequest) -> Result<Cleaned, String> {
     let words = word_count(&req.text);
     if words == 0 {
-        return Ok(req.text.clone());
+        return Ok(Cleaned { text: req.text.clone(), lang: req.lang.clone() });
     }
-    let language = if req.lang == "fr" {
-        "French. Use correct French spelling and accents."
-    } else {
-        "English. Use British spelling."
-    };
-    let mut user = format!(
-        "Deck subject: {}\nThis is the {} side of the card.\nLanguage of this side: {}\n",
-        req.deck_name, req.side, language
-    );
-    if let Some(question) = req.question.as_deref().filter(|q| !q.is_empty()) {
-        user.push_str(&format!("The card's question: {question}\n"));
+    let mut user = format!("Deck subject: {}\nThis is the {} side of the card.\n", req.deck_name, req.side);
+    match req.lang.as_deref() {
+        Some("fr") => user.push_str("Language of this side: French. Use correct French spelling and accents.\n"),
+        Some(_) => user.push_str("Language of this side: English. Use British spelling.\n"),
+        None => user.push_str(
+            "Language of this side: English or French. Use British spelling for English, and correct \
+             French spelling and accents for French.\n",
+        ),
+    }
+    if let Some(other) = req.other.as_deref().filter(|o| !o.is_empty()) {
+        let name = if req.side == "question" { "answer" } else { "question" };
+        user.push_str(&format!("The card's {name}: {other}\n"));
     }
     user.push_str(&format!("\n<transcript>\n{}\n</transcript>", req.text));
 
-    let output = complete(&req.model, CLEANUP_PROMPT, &user, (words as u32 * 4).max(128))?;
-    let cleaned = unwrap(&output);
-    if !is_plausible(&cleaned, &req.text) {
+    let mixed = req.lang.is_none();
+    let output_rule = if mixed { CLEANUP_OUTPUT_JSON } else { CLEANUP_OUTPUT_TEXT };
+    let system = format!("{CLEANUP_PROMPT}\n\n{output_rule}");
+    let output = complete(&req.model, &system, &user, (words as u32 * 4).max(128) + 32)?;
+    let cleaned = if mixed {
+        parse_cleaned(&output).ok_or("The model gave a reply the app cannot read.")?
+    } else {
+        Cleaned { text: unwrap(&output), lang: req.lang.clone() }
+    };
+    if !is_plausible(&cleaned.text, &req.text) {
         return Err("The model changed the text too much, so the app kept the original.".into());
     }
     Ok(cleaned)
+}
+
+/// Reads `{"lang": "fr", "text": "..."}` from a mixed-deck cleanup.
+fn parse_cleaned(output: &str) -> Option<Cleaned> {
+    #[derive(Deserialize)]
+    struct Reply {
+        lang: String,
+        text: String,
+    }
+    let start = output.find('{')?;
+    let end = output.rfind('}')?;
+    let reply: Reply = serde_json::from_str(output.get(start..=end)?).ok()?;
+    let lang = matches!(reply.lang.as_str(), "en" | "fr").then_some(reply.lang);
+    let text = unwrap(&reply.text);
+    (!text.is_empty()).then_some(Cleaned { text, lang })
 }
 
 /// Removes wrappers that some models add around the answer.
@@ -595,13 +638,14 @@ mod tests {
         let cleaned = cleanup(&CleanupRequest {
             text: "Jew Peter".into(),
             side: "answer".into(),
-            lang: "en".into(),
+            lang: Some("en".into()),
             deck_name: "Science".into(),
-            question: Some("What is the largest planet?".into()),
+            other: Some("What is the largest planet?".into()),
             model: "openai/gpt-5.6-luna".into(),
         })
         .unwrap();
-        assert_eq!(cleaned, "Jupiter");
+        assert_eq!(cleaned.text, "Jupiter");
+        assert_eq!(cleaned.lang.as_deref(), Some("en"));
 
         let m = mark(&MarkRequest {
             question: "What is the closest planet to the Sun?".into(),
@@ -635,30 +679,40 @@ mod tests {
     #[ignore = "calls OpenRouter and costs a little credit"]
     fn live_openrouter() {
         let model = "openai/gpt-5.6-luna";
-        let cleanups = [
-            ("question", "en", "Science", None, "um what is the uh the largest planet in the solar system"),
-            ("answer", "en", "Science", Some("What is the largest planet?"), "it's Jew Peter"),
-            ("question", "en", "History", None, "when was the battle of hastings"),
-            ("answer", "en", "History", Some("When was the Battle of Hastings?"), "1065 no 1066"),
-            ("answer", "en", "History", Some("Who won the Battle of Hastings?"), "the answer is William the conqueror"),
-            ("question", "en", "French", None, "how do you say the dog"),
-            ("answer", "fr", "French", Some("How do you say the dog?"), "le chien"),
-            ("answer", "fr", "French", Some("How do you say I like swimming?"), "j'aime nager"),
-            ("question", "en", "Science", None, "what is photosynthesis"),
-            ("answer", "en", "Science", Some("What is photosynthesis?"), "it's like when plants use um sunlight to make their food from carbon dioxide and water"),
-            ("question", "en", "Maths", None, "what is seven times eight"),
-            ("answer", "en", "Maths", Some("What is seven times eight?"), "fifty four"),
+        let cleanups: [(&str, Option<&str>, &str, Option<&str>, &str); 18] = [
+            ("question", Some("en"), "Science", None, "um what is the uh the largest planet in the solar system"),
+            ("answer", Some("en"), "Science", Some("What is the largest planet?"), "it's Jew Peter"),
+            ("question", Some("en"), "History", None, "when was the battle of hastings"),
+            ("answer", Some("en"), "History", Some("When was the Battle of Hastings?"), "1065 no 1066"),
+            ("answer", Some("en"), "History", Some("Who won the Battle of Hastings?"), "the answer is William the conqueror"),
+            ("question", Some("en"), "French", None, "how do you say the dog"),
+            ("answer", Some("fr"), "French", Some("How do you say the dog?"), "le chien"),
+            ("answer", Some("fr"), "French", Some("How do you say I like swimming?"), "j'aime nager"),
+            ("question", Some("en"), "Science", None, "what is photosynthesis"),
+            ("answer", Some("en"), "Science", Some("What is photosynthesis?"), "it's like when plants use um sunlight to make their food from carbon dioxide and water"),
+            ("question", Some("en"), "Maths", None, "what is seven times eight"),
+            ("answer", Some("en"), "Maths", Some("What is seven times eight?"), "fifty four"),
+            // Mixed English and French decks: the model decides the language.
+            ("question", None, "French verbs", None, "A voir"),
+            ("answer", None, "French verbs", Some("avoir"), "to have"),
+            ("question", None, "French verbs", None, "I have"),
+            ("answer", None, "French verbs", Some("I have"), "jay"),
+            ("question", None, "French verbs", Some("I like"), "amen"),
+            ("answer", None, "French food", Some("bread"), "pain"),
         ];
-        for (side, lang, deck, question, text) in cleanups {
+        for (side, lang, deck, other, text) in cleanups {
             let out = cleanup(&CleanupRequest {
                 text: text.into(),
                 side: side.into(),
-                lang: lang.into(),
+                lang: lang.map(Into::into),
                 deck_name: deck.into(),
-                question: question.map(Into::into),
+                other: other.map(Into::into),
                 model: model.into(),
             });
-            println!("CLEAN {side:8} {text:?}\n   -> {out:?}");
+            match out {
+                Ok(c) => println!("CLEAN {side:8} {text:?}\n   -> {:?} ({:?})", c.text, c.lang),
+                Err(e) => println!("CLEAN {side:8} {text:?}\n   -> ERROR {e}"),
+            }
         }
         let marks = [
             ("What is the largest planet?", "Jupiter", "en", "Science", "jupiter"),
@@ -685,6 +739,16 @@ mod tests {
                 Err(e) => println!("MARK {answer:?} said {spoken:?}\n   -> ERROR {e}"),
             }
         }
+    }
+
+    #[test]
+    fn parses_mixed_cleanups() {
+        let c = parse_cleaned("```json\n{\"lang\": \"fr\", \"text\": \"avoir\"}\n```").unwrap();
+        assert_eq!((c.text.as_str(), c.lang.as_deref()), ("avoir", Some("fr")));
+        let c = parse_cleaned("{\"lang\": \"de\", \"text\": \"haben\"}").unwrap();
+        assert_eq!(c.lang, None, "only English and French are accepted");
+        assert!(parse_cleaned("{\"lang\": \"fr\", \"text\": \"\"}").is_none());
+        assert!(parse_cleaned("avoir").is_none());
     }
 
     #[test]

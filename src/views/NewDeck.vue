@@ -19,7 +19,8 @@ import {
 import type { Lang } from "../types";
 
 const name = ref("");
-const backLang = ref<Lang>("en");
+const languages = ref<Lang[]>(["en"]);
+const mixed = () => languages.value.length > 1;
 const typing = ref(false);
 const recording = ref(false);
 
@@ -39,8 +40,8 @@ async function pressMic() {
 
 function create() {
   if (!name.value.trim()) return;
-  if (backLang.value === "fr") ensureModel("multilingual");
-  const deck = createDeck(name.value.trim(), backLang.value);
+  if (mixed()) ensureModel("multilingual");
+  const deck = createDeck(name.value.trim(), [...languages.value]);
   go({ name: "make", deckId: deck.id });
 }
 
@@ -78,15 +79,16 @@ useSpaceToTalk(pressMic);
     </div>
 
     <div class="panel">
-      <span class="label">What language are the answers in?</span>
+      <span class="label">What language is the deck in?</span>
       <div class="choices">
-        <button type="button" class="choice" :class="{ on: backLang === 'en' }" @click="backLang = 'en'">
+        <button type="button" class="choice" :class="{ on: !mixed() }" @click="languages = ['en']">
           English
         </button>
-        <button type="button" class="choice" :class="{ on: backLang === 'fr' }" @click="backLang = 'fr'">
-          French
+        <button type="button" class="choice" :class="{ on: mixed() }" @click="languages = ['en', 'fr']">
+          English and French
         </button>
       </div>
+      <p v-if="mixed()" class="hint">Either side of a card can be English or French.</p>
     </div>
 
     <div class="row center">
@@ -158,6 +160,10 @@ useSpaceToTalk(pressMic);
   border-color: var(--accent);
   background: var(--accent-wash);
   font-weight: 600;
+}
+.hint {
+  color: var(--muted);
+  margin: 12px 0 0;
 }
 .warn {
   color: var(--warn);

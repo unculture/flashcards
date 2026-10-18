@@ -5,6 +5,7 @@ import ModelBanner from "../components/ModelBanner.vue";
 import UpdateBanner from "../components/UpdateBanner.vue";
 import { ref } from "vue";
 import { openDecks } from "../exchange";
+import { isMixed } from "../lang";
 import { library } from "../library";
 import { go } from "../router";
 
@@ -50,7 +51,7 @@ async function openFile() {
         <span class="name">{{ deck.name }}</span>
         <span class="meta">
           {{ deck.cards.length }} {{ deck.cards.length === 1 ? "card" : "cards" }}
-          <template v-if="deck.backLang === 'fr'"> · French</template>
+          <template v-if="isMixed(deck)"> · English and French</template>
         </span>
         <BoxBar :deck="deck" />
       </button>

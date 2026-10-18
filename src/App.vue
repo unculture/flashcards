@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import { deckModel } from "./lang";
 import { library, loadLibrary, loaded, saveError } from "./library";
 import { route } from "./router";
 import { refreshKey } from "./ai";
@@ -23,7 +24,7 @@ onMounted(async () => {
     // Start the English voice download on the first launch, so it is ready
     // by the time she has named her first deck.
     ensureModel("english");
-    if (library.decks.some((d) => d.backLang === "fr")) ensureModel("multilingual");
+    if (library.decks.some((d) => deckModel(d) === "multilingual")) ensureModel("multilingual");
     startUpdateChecks();
   } catch (err) {
     startError.value = String(err);

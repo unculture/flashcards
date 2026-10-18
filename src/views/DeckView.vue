@@ -2,8 +2,10 @@
 import { computed, ref } from "vue";
 import BoxBar from "../components/BoxBar.vue";
 import Icon from "../components/Icon.vue";
+import LangTag from "../components/LangTag.vue";
 import SpeakButton from "../components/SpeakButton.vue";
 import { saveDecks } from "../exchange";
+import { isMixed, sideLang } from "../lang";
 import { deleteCard, deleteDeck, findDeck, isDue } from "../library";
 import { go } from "../router";
 
@@ -74,11 +76,13 @@ function removeDeck() {
       <li v-for="card in [...deck.cards].reverse()" :key="card.id" class="card">
         <div class="texts">
           <div class="q">
-            <SpeakButton :text="card.front.text" :lang="deck.frontLang" size="small" />
+            <SpeakButton :text="card.front.text" :lang="sideLang(deck, card, 'front')" size="small" />
+            <LangTag v-if="isMixed(deck)" :lang="sideLang(deck, card, 'front')" />
             <span>{{ card.front.text }}</span>
           </div>
           <div class="a">
-            <SpeakButton :text="card.back.text" :lang="deck.backLang" size="small" />
+            <SpeakButton :text="card.back.text" :lang="sideLang(deck, card, 'back')" size="small" />
+            <LangTag v-if="isMixed(deck)" :lang="sideLang(deck, card, 'back')" />
             <span>{{ card.back.text }}</span>
           </div>
         </div>

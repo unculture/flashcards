@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import Icon from "../components/Icon.vue";
+import LangTag from "../components/LangTag.vue";
 import LiveText from "../components/LiveText.vue";
 import MicButton from "../components/MicButton.vue";
 import ModelBanner from "../components/ModelBanner.vue";
 import SpeakButton from "../components/SpeakButton.vue";
 import TypeDialog from "../components/TypeDialog.vue";
 import { cleanupText } from "../ai";
-import { addCard, findDeck, modelFor } from "../library";
+import { deckModel, guessLang, isMixed, otherLang, sideLang, type SideName } from "../lang";
+import { addCard, findDeck } from "../library";
 import { go, useSpaceToTalk } from "../router";
 import {
   cancelDictation,
@@ -19,14 +21,15 @@ import {
   startDictation,
   stopDictation,
 } from "../speech";
-import type { Side } from "../types";
+import type { Lang, Side } from "../types";
 
 // Making cards: she speaks the question, then the answer, and the card saves
 // itself. Tapping the microphone again starts the next card. While she
 // speaks, tapping the answer moves on to it, and tapping the same side starts
 // it again. Otherwise tapping a side selects it, to say it again or type it.
-
-type SideName = "front" | "back";
+//
+// In a deck with more than one language, each side shows its language. The
+// app guesses it, the AI tidy-up corrects the guess, and she can tap it.
 
 const props = defineProps<{ deckId: string; cardId?: string }>();
 const deck = computed(() => findDeck(props.deckId));
@@ -52,6 +55,9 @@ const cardForDraft = new Map<string, string>();
 /** Sides waiting for the AI cleanup, as "draftId:side". */
 const tidying = reactive(new Set<string>());
 const isTidying = (side: SideName) => tidying.has(`${draftId.value}:${side}`);
+/** Sides whose language she chose by tapping, as "draftId:side". Guesses leave them alone. */
+const pinned = reactive(new Set<string>());
+const isPinned = (side: SideName) => pinned.has(`${draftId.value}:${side}`);
 
 if (props.cardId && deck.value) {
   const card = deck.value.cards.find((c) => c.id === props.cardId);
@@ -63,13 +69,31 @@ if (props.cardId && deck.value) {
   }
 }
 
-const langOf = (side: SideName) => (side === "front" ? deck.value!.frontLang : deck.value!.backLang);
-const modelOf = (side: SideName) => modelFor(langOf(side));
-const neededModels = computed(() =>
-  deck.value ? [...new Set([modelOf("front"), modelOf("back")])] : [],
-);
-const micSide = computed<SideName>(() => active.value ?? "front");
-const micReady = computed(() => models[modelOf(micSide.value)].installed);
+const mixed = computed(() => !!deck.value && isMixed(deck.value));
+const langOf = (side: SideName): Lang => sideLang(deck.value!, draft, side);
+// One model hears every side: the multilingual one hears English too.
+const modelOf = (_side: SideName) => deckModel(deck.value!);
+const neededModels = computed(() => (deck.value ? [deckModel(deck.value)] : []));
+const micReady = computed(() => models[modelOf("front")].installed);
+
+/**
+ * In a mixed deck, works out the language of new text on a side, unless she
+ * chose it by tapping. The AI tidy-up may correct it later.
+ */
+function withLang(side: SideName, value: Side): Side {
+  if (!mixed.value) return value;
+  if (isPinned(side)) return { ...value, lang: langOf(side) };
+  const other: SideName = side === "front" ? "back" : "front";
+  const otherKnown = draft[other].text ? langOf(other) : undefined;
+  const fallback = side === "front" ? deck.value!.frontLang : deck.value!.backLang;
+  return { ...value, lang: guessLang(value.text, otherKnown, fallback) };
+}
+
+function toggleLang(side: SideName) {
+  draft[side] = { ...draft[side], lang: otherLang(deck.value!, langOf(side)) };
+  pinned.add(`${draftId.value}:${side}`);
+  if (savedId.value) updateSaved();
+}
 
 onMounted(() => {
   for (const m of neededModels.value) {
@@ -130,25 +154,32 @@ async function tidyUp(side: SideName, raw: string) {
   const token = draftId.value;
   const key = `${token}:${side}`;
   tidying.add(key);
+  const other = draft[side === "front" ? "back" : "front"].text;
   const cleaned = await cleanupText({
     text: raw,
     side: side === "front" ? "question" : "answer",
-    lang: langOf(side),
+    // In a mixed deck the AI decides, unless she chose the language herself.
+    lang: mixed.value && !pinned.has(key) ? null : langOf(side),
     deckName: deck.value!.name,
-    question: side === "back" ? draft.front.text : undefined,
+    other: other || undefined,
   });
   tidying.delete(key);
-  if (!cleaned || cleaned === raw) return;
+  if (!cleaned) return;
+  const tidied = (current: Side): Side => ({
+    text: cleaned.text,
+    heard: raw,
+    ...(mixed.value ? { lang: pinned.has(key) ? current.lang : (cleaned.lang ?? current.lang) } : {}),
+  });
 
   if (draftId.value === token) {
     if (draft[side].text !== raw) return;
-    draft[side] = { text: cleaned, heard: raw };
+    draft[side] = tidied(draft[side]);
     if (savedId.value) updateSaved();
     return;
   }
   const card = deck.value?.cards.find((c) => c.id === cardForDraft.get(token));
   if (card && card[side].text === raw) {
-    card[side] = { text: cleaned, heard: raw };
+    card[side] = tidied(card[side]);
     card.updatedAt = new Date().toISOString();
   }
 }
@@ -157,13 +188,13 @@ async function tidyUp(side: SideName, raw: string) {
 function useWhatIHeard(side: SideName) {
   const heard = draft[side].heard;
   if (!heard) return;
-  draft[side] = { text: heard, heard };
+  draft[side] = { ...draft[side], text: heard, heard };
   if (savedId.value) updateSaved();
 }
 
 /** Puts new text on a side, then moves on: question to answer, answer to save. */
 function setSide(side: SideName, value: Side) {
-  draft[side] = value;
+  draft[side] = withLang(side, value);
   if (savedId.value) {
     updateSaved();
     active.value = null;
@@ -260,6 +291,7 @@ useSpaceToTalk(pressMic);
     >
       <div class="side-head">
         <span class="side-label">{{ side === "front" ? "Question" : "Answer" }}</span>
+        <LangTag v-if="mixed" :lang="langOf(side)" tappable @toggle="toggleLang(side)" />
         <span class="spacer" />
         <span v-if="isTidying(side)" class="tidying">Tidying up…</span>
         <button

@@ -8,6 +8,11 @@ export interface Side {
   text: string;
   /** What the speech model heard, before any cleanup or typing. */
   heard?: string;
+  /**
+   * The language of this side, in decks with more than one language. It
+   * picks the read-aloud accent and tells the AI which language to expect.
+   */
+  lang?: Lang;
 }
 
 export interface Card {
@@ -25,6 +30,15 @@ export interface Card {
 export interface Deck {
   id: string;
   name: string;
+  /**
+   * The languages the deck uses. With more than one, either side of a card can
+   * be in any of them, and each side stores its own `lang`.
+   */
+  languages: Lang[];
+  /**
+   * Kept for older versions of the app, which had an English front and an
+   * answer language. Each side's `lang` replaces them.
+   */
   frontLang: Lang;
   backLang: Lang;
   createdAt: string;

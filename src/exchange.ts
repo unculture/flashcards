@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { upgradeDeck } from "./lang";
 import { library } from "./library";
 import { BOXES, type Card, type Deck, type Lang } from "./types";
 
@@ -76,14 +77,19 @@ function readDeck(raw: unknown): Deck | null {
   if (!isObject(raw) || typeof raw.name !== "string") return null;
   const now = new Date().toISOString();
   const cards = (Array.isArray(raw.cards) ? raw.cards : []).map(readCard).filter((c): c is Card => c !== null);
-  return {
+  const languages = Array.isArray(raw.languages) ? [...new Set(raw.languages.map(lang))] : [];
+  const deck: Deck = {
     id: text(raw.id) || crypto.randomUUID(),
     name: raw.name.trim() || "Imported deck",
+    languages,
     frontLang: lang(raw.frontLang),
     backLang: lang(raw.backLang),
     createdAt: text(raw.createdAt) || now,
     cards,
   };
+  // Files from older versions have no languages: work them out as on load.
+  upgradeDeck(deck);
+  return deck;
 }
 
 function readCard(raw: unknown): Card | null {
@@ -103,6 +109,8 @@ function readCard(raw: unknown): Card | null {
   };
   if (text(raw.front.heard)) card.front.heard = text(raw.front.heard);
   if (text(raw.back.heard)) card.back.heard = text(raw.back.heard);
+  if (raw.front.lang === "en" || raw.front.lang === "fr") card.front.lang = raw.front.lang;
+  if (raw.back.lang === "en" || raw.back.lang === "fr") card.back.lang = raw.back.lang;
   if (text(raw.seenAt)) card.seenAt = text(raw.seenAt);
   return card;
 }

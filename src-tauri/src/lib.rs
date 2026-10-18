@@ -198,7 +198,7 @@ fn ai_clear_key() -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn ai_cleanup(request: ai::CleanupRequest) -> Result<String, String> {
+async fn ai_cleanup(request: ai::CleanupRequest) -> Result<ai::Cleaned, String> {
     tauri::async_runtime::spawn_blocking(move || ai::cleanup(&request))
         .await
         .map_err(|e| e.to_string())?

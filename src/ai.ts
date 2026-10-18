@@ -35,16 +35,24 @@ export async function clearKey() {
 export interface CleanupArgs {
   text: string;
   side: "question" | "answer";
-  lang: Lang;
+  /** The side's language, or null in a mixed deck, where the AI decides. */
+  lang: Lang | null;
   deckName: string;
-  question?: string;
+  /** The other side of the card, if it has text yet. */
+  other?: string;
+}
+
+export interface Cleaned {
+  text: string;
+  /** The side's language, when the AI decided it. */
+  lang: Lang | null;
 }
 
 /** Returns the cleaned text, or null when cleanup is off, has no key, or fails. */
-export async function cleanupText(args: CleanupArgs): Promise<string | null> {
+export async function cleanupText(args: CleanupArgs): Promise<Cleaned | null> {
   if (!library.settings.cleanup || !hasKey.value) return null;
   try {
-    return await invoke<string>("ai_cleanup", { request: { ...args, model: library.settings.aiModel } });
+    return await invoke<Cleaned>("ai_cleanup", { request: { ...args, model: library.settings.aiModel } });
   } catch (err) {
     console.warn("cleanup failed:", err);
     return null;

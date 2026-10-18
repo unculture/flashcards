@@ -49,7 +49,7 @@ Two models, chosen the same way as in Patter. Each one downloads the first time 
 | Parakeet English | Default. Most accurate for English. |
 | Parakeet Multilingual (25 European languages) | French decks |
 
-The model is a setting of each deck, not one setting for the whole app. Most decks use English, and a French deck uses Multilingual. She does not have to choose each time.
+The model is a setting of each deck, not one setting for the whole app. Most decks use English. An "English and French" deck uses Multilingual for both sides, because it hears English too and detects the language by itself. Either side of a card can then be in either language, and each side stores its own language (see issue #4). She does not have to choose each time.
 
 Risk: the multilingual model detects the language itself, and you cannot set the language. On single French words it can choose the wrong language. If the voice test shows that it does, test Whisper through sherpa-onnx as the fallback. Whisper accepts a fixed language but is slower.
 

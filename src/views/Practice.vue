@@ -2,12 +2,14 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import BoxBar from "../components/BoxBar.vue";
 import Icon from "../components/Icon.vue";
+import LangTag from "../components/LangTag.vue";
 import LiveText from "../components/LiveText.vue";
 import MicButton from "../components/MicButton.vue";
 import ModelBanner from "../components/ModelBanner.vue";
 import SpeakButton from "../components/SpeakButton.vue";
 import { type Mark, markAnswer, sameAnswer } from "../ai";
-import { findDeck, markCard, modelFor, pickSession } from "../library";
+import { deckModel, isMixed, sideLang } from "../lang";
+import { findDeck, markCard, pickSession } from "../library";
 import { playNotYet, playRight } from "../sounds";
 import { stopSpeaking } from "../voice";
 import { go, useSpaceToTalk } from "../router";
@@ -57,7 +59,8 @@ const nothingDue = ref(false);
 
 const card = computed(() => cards.value[index.value]);
 const finished = computed(() => !nothingDue.value && index.value >= cards.value.length);
-const answerModel = computed(() => modelFor(deck.value!.backLang));
+const answerModel = computed(() => deckModel(deck.value!));
+const mixed = computed(() => isMixed(deck.value!));
 
 function startSession(everything: boolean) {
   cards.value = pickSession(deck.value!, SESSION_SIZE, everything);
@@ -155,7 +158,7 @@ async function check(target: Card, said: string) {
     question: target.front.text,
     answer: target.back.text,
     spoken: said,
-    lang: deck.value!.backLang,
+    lang: sideLang(deck.value!, target, "back"),
     deckName: deck.value!.name,
   });
   // She may have moved on while the AI was thinking.
@@ -224,8 +227,8 @@ useSpaceToTalk(pressMic);
     <template v-else-if="card">
       <div class="face question">
         <div class="face-head">
-          <span class="side-label">Question</span>
-          <SpeakButton :text="card.front.text" :lang="deck.frontLang" />
+          <span class="side-label">Question <LangTag v-if="mixed" :lang="sideLang(deck, card, 'front')" /></span>
+          <SpeakButton :text="card.front.text" :lang="sideLang(deck, card, 'front')" />
         </div>
         <p class="face-text">{{ card.front.text }}</p>
       </div>
@@ -257,8 +260,8 @@ useSpaceToTalk(pressMic);
         </div>
         <div class="face answer">
           <div class="face-head">
-            <span class="side-label">Answer</span>
-            <SpeakButton :text="card.back.text" :lang="deck.backLang" />
+            <span class="side-label">Answer <LangTag v-if="mixed" :lang="sideLang(deck, card, 'back')" /></span>
+            <SpeakButton :text="card.back.text" :lang="sideLang(deck, card, 'back')" />
           </div>
           <p class="face-text">{{ card.back.text }}</p>
         </div>

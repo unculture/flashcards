@@ -1,6 +1,7 @@
 import { reactive, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { BOXES, type Card, type Deck, type Lang, type Library, type ModelId } from "./types";
+import { upgradeDeck } from "./lang";
+import { BOXES, type Card, type Deck, type Lang, type Library, type Side } from "./types";
 
 export const library = reactive<Library>({
   version: 1,
@@ -23,6 +24,7 @@ export async function loadLibrary() {
   const stored = await invoke<Library | null>("load_library");
   if (stored) {
     library.decks = stored.decks ?? [];
+    library.decks.forEach(upgradeDeck);
     library.settings = { ...library.settings, ...stored.settings };
   }
   loaded.value = true;
@@ -49,16 +51,14 @@ async function save() {
 
 const now = () => new Date().toISOString();
 
-export function modelFor(lang: Lang): ModelId {
-  return lang === "en" ? "english" : "multilingual";
-}
-
-export function createDeck(name: string, backLang: Lang): Deck {
+export function createDeck(name: string, languages: Lang[]): Deck {
   const deck: Deck = {
     id: crypto.randomUUID(),
     name,
+    languages,
+    // Older versions of the app read these.
     frontLang: "en",
-    backLang,
+    backLang: languages.includes("fr") ? "fr" : "en",
     createdAt: now(),
     cards: [],
   };
@@ -75,7 +75,7 @@ export function deleteDeck(id: string) {
   if (i >= 0) library.decks.splice(i, 1);
 }
 
-export function addCard(deck: Deck, front: { text: string; heard?: string }, back: { text: string; heard?: string }): Card {
+export function addCard(deck: Deck, front: Side, back: Side): Card {
   const card: Card = {
     id: crypto.randomUUID(),
     front,

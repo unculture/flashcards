@@ -26,7 +26,7 @@ If the microphone does not work, open Settings > Privacy & security > Microphone
 
 ## Use Flashcards
 
-- **New deck**: tap New deck, say the name, and choose the language of the answers. A French deck downloads the multilingual voice, also about 500 MB.
+- **New deck**: tap New deck, say the name, and choose **English** or **English and French**. In an English and French deck, either side of a card can be in either language. Each side shows EN or FR, which she can tap if the app guessed wrong. These decks download the multilingual voice, also about 500 MB.
 - **Make cards**: tap the microphone and say the question. Tap it again to stop. Then do the same for the answer. The card saves itself, and the next tap starts the next card. To say a side again, tap that side and then the microphone. To type instead, tap Type.
 - **Practise**: each session has up to 10 cards. She says her answer or taps Show answer, then taps Got it or Not yet. Got it moves the card up a box, and Not yet moves it back to box 1. Cards in higher boxes come up less often. There are no timers and no scores.
 - **Save and share decks**: on a deck's page, Save to a file writes a `.flashcards` file. On the home screen, Open a deck file adds the decks from a file. Settings › Backup saves every deck, with her progress, in one file. A deck that is already in the app comes in as a copy, so opening a file never overwrites anything.
