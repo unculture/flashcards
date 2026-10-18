@@ -8,6 +8,7 @@ import { ensureModel, initSpeech } from "./speech";
 import { startUpdateChecks } from "./update";
 import CardMaker from "./views/CardMaker.vue";
 import DeckView from "./views/DeckView.vue";
+import Describe from "./views/Describe.vue";
 import Home from "./views/Home.vue";
 import NewDeck from "./views/NewDeck.vue";
 import Practice from "./views/Practice.vue";
@@ -49,6 +50,7 @@ onMounted(async () => {
       />
       <Practice v-else-if="route.name === 'practice'" :deck-id="route.deckId" />
       <Print v-else-if="route.name === 'print'" :deck-id="route.deckId" />
+      <Describe v-else-if="route.name === 'describe'" :deck-id="route.deckId" />
     </template>
   </main>
 </template>

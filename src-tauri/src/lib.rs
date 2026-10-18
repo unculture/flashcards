@@ -211,6 +211,13 @@ async fn ai_mark(request: ai::MarkRequest) -> Result<ai::Mark, String> {
         .map_err(|e| e.to_string())?
 }
 
+#[tauri::command]
+async fn ai_generate_cards(request: ai::GenerateRequest) -> Result<ai::Generated, String> {
+    tauri::async_runtime::spawn_blocking(move || ai::generate(&request))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// Returns a WAV file of the text read aloud, as raw bytes.
 #[tauri::command]
 async fn ai_speak(app: AppHandle, request: ai::SpeakRequest) -> Result<tauri::ipc::Response, String> {
@@ -387,6 +394,7 @@ pub fn run() {
             ai_clear_key,
             ai_cleanup,
             ai_mark,
+            ai_generate_cards,
             ai_speak,
             save_deck_file,
             open_deck_file,

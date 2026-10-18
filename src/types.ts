@@ -25,6 +25,8 @@ export interface Card {
   updatedAt: string;
   /** When she last practised the card. */
   seenAt?: string;
+  /** "ai" when the card came from "Describe cards for me". */
+  source?: "ai";
 }
 
 export interface Deck {

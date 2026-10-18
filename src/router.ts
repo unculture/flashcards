@@ -7,7 +7,8 @@ export type Route =
   | { name: "deck"; deckId: string }
   | { name: "make"; deckId: string; cardId?: string }
   | { name: "practice"; deckId: string }
-  | { name: "print"; deckId: string };
+  | { name: "print"; deckId: string }
+  | { name: "describe"; deckId: string };
 
 export const route = ref<Route>({ name: "home" });
 

@@ -112,6 +112,7 @@ function readCard(raw: unknown): Card | null {
   if (raw.front.lang === "en" || raw.front.lang === "fr") card.front.lang = raw.front.lang;
   if (raw.back.lang === "en" || raw.back.lang === "fr") card.back.lang = raw.back.lang;
   if (text(raw.seenAt)) card.seenAt = text(raw.seenAt);
+  if (raw.source === "ai") card.source = "ai";
   return card;
 }
 

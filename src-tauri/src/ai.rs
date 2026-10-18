@@ -152,6 +152,16 @@ fn load_model_list() -> Option<HashMap<String, Option<String>>> {
 }
 
 fn complete(model: &str, system: &str, user: &str, max_tokens: u32) -> Result<String, String> {
+    complete_with_timeout(model, system, user, max_tokens, TIMEOUT)
+}
+
+fn complete_with_timeout(
+    model: &str,
+    system: &str,
+    user: &str,
+    max_tokens: u32,
+    timeout: Duration,
+) -> Result<String, String> {
     let key = api_key()?;
     let mut body = json!({
         "model": model,
@@ -170,7 +180,7 @@ fn complete(model: &str, system: &str, user: &str, max_tokens: u32) -> Result<St
             body["max_tokens"] = json!(max_tokens + 1024);
         }
     }
-    let mut response = agent()
+    let mut response = agent_with_timeout(timeout)
         .post(&format!("{}/chat/completions", base_url()))
         .header("Authorization", &format!("Bearer {key}"))
         .header("X-OpenRouter-Title", "Flashcards")
@@ -403,6 +413,148 @@ fn parse_mark(output: &str) -> Option<Mark> {
     let mark: Mark = serde_json::from_str(output.get(start..=end)?).ok()?;
     let valid = matches!(mark.verdict.as_str(), "right" | "nearly" | "not_yet");
     (valid && !mark.feedback.trim().is_empty()).then_some(mark)
+}
+
+// ---------------------------------------------------------------------------
+// Making cards from a description
+// ---------------------------------------------------------------------------
+
+/// Cards she learns from must be right, so this always uses the more careful
+/// model, whatever the setting for cleanup and marking.
+const GENERATE_MODEL: &str = "anthropic/claude-haiku-4.5";
+const MAX_CARDS: usize = 60;
+
+#[derive(Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct NewCard {
+    front: String,
+    back: String,
+    #[serde(default)]
+    front_lang: Option<String>,
+    #[serde(default)]
+    back_lang: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GenerateRequest {
+    /// What she, or a parent, asked for.
+    description: String,
+    deck_name: String,
+    /// The deck's languages, such as ["en", "fr"].
+    languages: Vec<String>,
+    /// Cards already in the deck, so the list doesn't repeat them.
+    #[serde(default)]
+    existing: Vec<NewCard>,
+    /// The list so far, when she asks for changes to it.
+    #[serde(default)]
+    current: Vec<NewCard>,
+    /// What to change in the current list.
+    #[serde(default)]
+    change: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct Generated {
+    cards: Vec<NewCard>,
+    /// A short message for her, when the model has one, for example when the
+    /// request was unclear.
+    note: Option<String>,
+}
+
+const GENERATE_PROMPT: &str = "\
+You make flashcards for an 11-year-old student at school in England. She is dyslexic, so \
+cards must be short, clear and easy to read. A parent or the student describes the cards \
+they want, and you write them.
+
+Rules:
+- Every card must be correct. She will learn exactly what the card says. Use the standard \
+form taught in schools in England. For French, use correct spelling, accents and \
+apostrophes, and standard metropolitan French.
+- One fact per card. The front is the question or prompt, and the back is the answer.
+- Keep each side short: a word, a phrase or one short sentence.
+- If the description gives an example card, copy its pattern exactly, including which \
+language goes on which side and the style of the text.
+- If they ask for cards \"both ways\" or \"in both directions\", make each card twice: \
+once in each direction.
+- When one side could have more than one right answer, add a short hint in brackets so \
+there is only one. For example, English \"you have\" can be \"tu as\" or \"vous avez\", so \
+write \"you have (tu)\" and \"you have (vous)\". For \"he/she\" forms, write separate cards \
+or a clear hint.
+- The description may be a list of words or facts, for example from a school sheet. Then \
+make one card for each item.
+- Don't repeat cards that are already in the deck.
+- Make at most 60 cards. If they ask for more, make the first 60 and say so in the note.
+- Each side has a language code: \"en\" for English or \"fr\" for French. Use only the \
+deck's languages.
+
+Reply with JSON only, in this form:
+{\"cards\": [{\"front\": \"...\", \"frontLang\": \"en\", \"back\": \"...\", \"backLang\": \"fr\"}], \"note\": null}
+The note is null, or one short, friendly sentence for her in simple English: for example, \
+when the description is unclear and you made your best guess, or when you could not make \
+the cards.";
+
+pub fn generate(req: &GenerateRequest) -> Result<Generated, String> {
+    let languages: Vec<&str> = req
+        .languages
+        .iter()
+        .map(String::as_str)
+        .filter(|l| matches!(*l, "en" | "fr"))
+        .collect();
+    let languages = if languages.is_empty() { vec!["en"] } else { languages };
+    let names: Vec<&str> = languages
+        .iter()
+        .map(|l| if *l == "fr" { "French (fr)" } else { "English (en)" })
+        .collect();
+
+    let mut user = format!("Deck subject: {}\nDeck languages: {}\n", req.deck_name, names.join(" and "));
+    if !req.existing.is_empty() {
+        user.push_str("\nCards already in the deck:\n");
+        for card in req.existing.iter().take(200) {
+            user.push_str(&format!("- {} → {}\n", card.front, card.back));
+        }
+    }
+    user.push_str(&format!("\nWhat they asked for:\n<description>\n{}\n</description>\n", req.description));
+    if let Some(change) = req.change.as_deref().filter(|c| !c.trim().is_empty()) {
+        let current = serde_json::to_string(&req.current).map_err(|e| e.to_string())?;
+        user.push_str(&format!(
+            "\nYou already made this list:\n{current}\n\nNow they ask for this change:\n<change>\n{change}\n</change>\n\
+             Reply with the whole new list."
+        ));
+    }
+
+    let output = complete_with_timeout(GENERATE_MODEL, GENERATE_PROMPT, &user, 6000, Duration::from_secs(90))?;
+    parse_generated(&output, &languages).ok_or_else(|| "The AI gave a reply the app cannot read. Try again.".into())
+}
+
+fn parse_generated(output: &str, languages: &[&str]) -> Option<Generated> {
+    #[derive(Deserialize)]
+    struct Reply {
+        cards: Vec<NewCard>,
+        #[serde(default)]
+        note: Option<String>,
+    }
+    let start = output.find('{')?;
+    let end = output.rfind('}')?;
+    let reply: Reply = serde_json::from_str(output.get(start..=end)?).ok()?;
+    let fix_lang = |lang: Option<String>, fallback: &str| -> Option<String> {
+        Some(lang.filter(|l| languages.contains(&l.as_str())).unwrap_or_else(|| fallback.to_owned()))
+    };
+    let last = languages[languages.len() - 1];
+    let cards = reply
+        .cards
+        .into_iter()
+        .map(|c| NewCard {
+            front: c.front.trim().to_owned(),
+            back: c.back.trim().to_owned(),
+            front_lang: fix_lang(c.front_lang, languages[0]),
+            back_lang: fix_lang(c.back_lang, last),
+        })
+        .filter(|c| !c.front.is_empty() && !c.back.is_empty())
+        .take(MAX_CARDS)
+        .collect();
+    let note = reply.note.map(|n| n.trim().to_owned()).filter(|n| !n.is_empty());
+    Some(Generated { cards, note })
 }
 
 // ---------------------------------------------------------------------------
@@ -738,6 +890,47 @@ mod tests {
                 Ok(m) => println!("MARK {answer:?} said {spoken:?}\n   -> {} | {}", m.verdict, m.feedback),
                 Err(e) => println!("MARK {answer:?} said {spoken:?}\n   -> ERROR {e}"),
             }
+        }
+    }
+
+    #[test]
+    fn parses_generated_cards() {
+        let out = "Here you go:\n{\"cards\": [
+            {\"front\": \"I have\", \"frontLang\": \"en\", \"back\": \"j'ai\", \"backLang\": \"fr\"},
+            {\"front\": \" j'aime \", \"frontLang\": \"de\", \"back\": \"I like\"},
+            {\"front\": \"\", \"back\": \"empty\"}
+        ], \"note\": \"\"}";
+        let g = parse_generated(out, &["en", "fr"]).unwrap();
+        assert_eq!(g.cards.len(), 2, "cards with an empty side are dropped");
+        assert_eq!(g.cards[1].front, "j'aime");
+        assert_eq!(g.cards[1].front_lang.as_deref(), Some("en"), "unknown languages fall back");
+        assert_eq!(g.cards[1].back_lang.as_deref(), Some("fr"));
+        assert!(g.note.is_none());
+        let g = parse_generated("{\"cards\": [{\"front\": \"a\", \"back\": \"b\", \"backLang\": \"fr\"}]}", &["en"]).unwrap();
+        assert_eq!(g.cards[0].back_lang.as_deref(), Some("en"), "only the deck's languages");
+        assert!(parse_generated("sorry", &["en"]).is_none());
+    }
+
+    /// Makes a real list of cards. Run it with
+    /// `OPENROUTER_API_KEY=... cargo test --lib live_generate -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "calls OpenRouter and costs a little credit"]
+    fn live_generate() {
+        let started = std::time::Instant::now();
+        let g = generate(&GenerateRequest {
+            description: "Please create cards like 'j'aime' to 'I like' and 'j'ai' to 'I have' for the verbs \
+                          aimer and avoir in the present tense. Both ways."
+                .into(),
+            deck_name: "French verbs".into(),
+            languages: vec!["en".into(), "fr".into()],
+            existing: vec![],
+            current: vec![],
+            change: None,
+        })
+        .unwrap();
+        println!("{} cards in {:?}, note {:?}", g.cards.len(), started.elapsed(), g.note);
+        for c in &g.cards {
+            println!("  {} ({:?}) → {} ({:?})", c.front, c.front_lang, c.back, c.back_lang);
         }
     }
 

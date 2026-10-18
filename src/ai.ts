@@ -100,3 +100,31 @@ export function sameAnswer(answer: string, spoken: string): boolean {
   const a = norm(answer);
   return a.length > 0 && a === norm(spoken);
 }
+
+export interface NewCard {
+  front: string;
+  back: string;
+  frontLang: Lang;
+  backLang: Lang;
+}
+
+export interface GenerateArgs {
+  description: string;
+  deckName: string;
+  languages: Lang[];
+  /** Cards already in the deck, so the list doesn't repeat them. */
+  existing: { front: string; back: string }[];
+  /** The list so far, and what to change in it. */
+  current?: NewCard[];
+  change?: string;
+}
+
+/** Makes a list of cards from a description. Throws a message she can read. */
+export async function generateCards(args: GenerateArgs): Promise<{ cards: NewCard[]; note: string | null }> {
+  if (!hasKey.value) throw new Error("This needs the OpenRouter key, in Settings.");
+  try {
+    return await invoke("ai_generate_cards", { request: args });
+  } catch (err) {
+    throw new Error(String(err) === "no-key" ? "This needs the OpenRouter key, in Settings." : String(err));
+  }
+}

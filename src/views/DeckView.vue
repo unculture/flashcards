@@ -4,6 +4,7 @@ import BoxBar from "../components/BoxBar.vue";
 import Icon from "../components/Icon.vue";
 import LangTag from "../components/LangTag.vue";
 import SpeakButton from "../components/SpeakButton.vue";
+import { hasKey } from "../ai";
 import { saveDecks } from "../exchange";
 import { isMixed, sideLang } from "../lang";
 import { deleteCard, deleteDeck, findDeck, isDue } from "../library";
@@ -62,6 +63,12 @@ function removeDeck() {
         @click="go({ name: 'print', deckId: deck.id })"
       >
         <Icon name="printer" /> Print
+      </button>
+    </div>
+
+    <div v-if="hasKey" class="describe-row">
+      <button type="button" class="button quiet describe" @click="go({ name: 'describe', deckId: deck.id })">
+        <Icon name="sparkle" :size="22" /> Or describe cards for me
       </button>
     </div>
 
@@ -146,6 +153,16 @@ function removeDeck() {
 .actions .button.print {
   flex: 0 1 auto;
   min-width: 0;
+}
+.describe-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: -6px 0 20px;
+}
+.describe {
+  border-color: transparent;
+  color: var(--accent);
+  font-size: 1rem;
 }
 .due {
   font-size: 0.95rem;
