@@ -34,6 +34,17 @@
   box-sizing: border-box;
 }
 
+/*
+ * Feel like an app, not a web page: nothing scrolls sideways, and the page
+ * doesn't bounce or stretch at its edges on a touchpad or touchscreen. Up and
+ * down scrolling still works.
+ */
+html,
+body {
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   background: var(--bg);

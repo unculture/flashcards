@@ -17,7 +17,8 @@
         "height": 820,
         "minWidth": 640,
         "minHeight": 560,
-        "maximized": true
+        "maximized": true,
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,ElasticOverscroll,OverscrollHistoryNavigation,msEdgeOverscrollHistoryNavigation"
       }
     ],
     "security": {
