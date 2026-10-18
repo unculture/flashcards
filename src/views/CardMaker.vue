@@ -24,7 +24,8 @@ import {
 import type { Lang, Side } from "../types";
 
 // Making cards: she speaks the question, then the answer, and the card saves
-// itself. Tapping the microphone again starts the next card. While she
+// itself. She checks it, then the big button, now "Next card", clears it and
+// listens for the next question. While she
 // speaks, tapping the answer moves on to it, and tapping the same side starts
 // it again. Otherwise tapping a side selects it, to say it again or type it.
 //
@@ -75,6 +76,8 @@ const langOf = (side: SideName): Lang => sideLang(deck.value!, draft, side);
 const modelOf = (_side: SideName) => deckModel(deck.value!);
 const neededModels = computed(() => (deck.value ? [deckModel(deck.value)] : []));
 const micReady = computed(() => models[modelOf("front")].installed);
+/** Once a card is complete, the big button moves on to the next card instead of listening. */
+const showNext = computed(() => !editing && active.value === null && dictation.state === "idle");
 
 /**
  * In a mixed deck, works out the language of new text on a side, unless she
@@ -107,7 +110,7 @@ const prompt = computed(() => {
   if (dictation.error) return dictation.error;
   if (notice.value) return notice.value;
   if (editing && active.value === null) return "Tap the question or the answer to change it.";
-  if (active.value === null) return "Saved! Tap the microphone for the next card.";
+  if (active.value === null) return "Check your card, then tap Next card.";
   if (recordingSide.value === "front") return "Say the question, then tap the answer box.";
   return active.value === "front" ? "Say the question." : "Now say the answer.";
 });
@@ -323,7 +326,12 @@ useSpaceToTalk(pressMic);
       <button type="button" class="button side-action" :disabled="dictation.state !== 'idle'" @click="openTyping">
         <Icon name="keyboard" /> Type
       </button>
-      <MicButton :active="true" :disabled="!micReady || (editing && active === null)" @press="pressMic" />
+      <MicButton
+        :active="true"
+        :next="showNext"
+        :disabled="!micReady || (editing && active === null)"
+        @press="pressMic"
+      />
       <button
         v-if="!editing"
         type="button"

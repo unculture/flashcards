@@ -4,8 +4,10 @@ import Icon from "./Icon.vue";
 import { dictation } from "../speech";
 
 // The big round button. It does not hold focus, so tapping it never opens
-// the on-screen keyboard.
-const props = defineProps<{ active: boolean; disabled?: boolean }>();
+// the on-screen keyboard. With `next`, it becomes the "Next card" button in
+// the card maker: green with an arrow, so it never looks like the microphone
+// when it does something else.
+const props = defineProps<{ active: boolean; disabled?: boolean; next?: boolean }>();
 defineEmits<{ press: [] }>();
 
 const recording = computed(() => props.active && dictation.state === "recording");
@@ -14,6 +16,7 @@ const busy = computed(
 );
 const label = computed(() => {
   if (busy.value) return dictation.state === "starting" ? "Getting ready" : "Writing it down";
+  if (props.next) return "Next card";
   return recording.value ? "Tap to stop" : "Tap to talk";
 });
 // The ring grows with the microphone level, so she can see that it hears her.
@@ -25,14 +28,14 @@ const ringScale = computed(() => (recording.value ? 1 + dictation.level * 0.45 :
     <button
       type="button"
       class="mic-button"
-      :class="{ recording, busy }"
+      :class="{ recording, busy, next: props.next && !recording && !busy }"
       :disabled="disabled || busy"
       :aria-label="label"
       @mousedown.prevent
       @click="$emit('press')"
     >
       <span class="ring" :style="{ transform: `scale(${ringScale})` }" />
-      <Icon :name="recording ? 'stop' : 'mic'" :size="44" />
+      <Icon :name="recording ? 'stop' : props.next && !busy ? 'arrowRight' : 'mic'" :size="44" />
     </button>
     <span class="mic-label">{{ label }}</span>
   </div>
@@ -65,6 +68,10 @@ const ringScale = computed(() => (recording.value ? 1 + dictation.level * 0.45 :
 .mic-button.recording {
   background: var(--record);
   box-shadow: 0 6px 18px rgba(196, 84, 60, 0.35);
+}
+.mic-button.next {
+  background: var(--good);
+  box-shadow: 0 6px 18px rgba(61, 138, 106, 0.32);
 }
 .mic-button.busy {
   background: var(--muted);
